@@ -30,7 +30,7 @@ import (
 	minio "github.com/minio/minio/cmd"
 )
 
-// Program arguments: server "D:\xiangqian\tmp\minio\data" --address ":9000" --console-address ":9001"
+// Program arguments: server "D:\tmp\minio\data" --address ":9000" --console-address ":9001"
 
 func main() {
 	err := thumb.Startup()
