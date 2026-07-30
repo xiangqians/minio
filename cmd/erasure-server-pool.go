@@ -1220,7 +1220,8 @@ func (z *erasureServerPools) putThumbObject(ctx context.Context, objAPI ObjectLa
 	bucket = fmt.Sprintf("%s-thumb", bucket)
 	_, err = objAPI.PutObject(ctx, bucket, object, putObjReader, ObjectOptions{
 		UserDefined: map[string]string{
-			"elapsed": elapsed.String(),
+			// 标准 S3 元数据前缀
+			"x-amz-meta-elapsed": elapsed.String(), // 生成缩略图耗时
 		},
 	})
 	return err
