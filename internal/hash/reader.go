@@ -192,6 +192,7 @@ func newReader(ctx context.Context, src io.Reader, size int64, md5Hex, sha256Hex
 // ErrInvalidChecksum is returned when an invalid checksum is provided in headers.
 var ErrInvalidChecksum = errors.New("invalid checksum")
 
+// Tee 将读取到的数据同步写入 w
 func (r *Reader) Tee(w io.Writer) {
 	// 用 TeeReader 包装原 src，使得从 src 读取数据时，数据会同步写入 w，为了能复用本次读取到的数据
 	r.src = io.TeeReader(r.src, w)

@@ -17,10 +17,12 @@ func TestC(t *testing.T) {
 }
 
 func TestGen(t *testing.T) {
+	// 初始化缩略图模块
 	err := Startup()
 	if err != nil {
 		log.Fatalf("vips startup failed: %v", err)
 	}
+	// 关闭缩略图模块，释放所有占用的资源
 	defer Shutdown()
 
 	var dir = "D:\\tmp\\minio\\tmp"

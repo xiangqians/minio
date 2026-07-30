@@ -22,6 +22,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/minio/minio/internal/ext/thumb"
+	"github.com/minio/minio/internal/hash"
 	"io"
 	"math/rand"
 	"net/http"
@@ -1082,26 +1084,37 @@ func (z *erasureServerPools) GetObjectInfo(ctx context.Context, bucket, object s
 }
 
 // PutObject - writes an object to least used erasure pool.
+// PutObject - 将对象写入到负载最轻的纠删码存储池中
+// 该方法会根据当前系统配置（单池/多池）选择合适的存储池，然后委托给该池执行实际写入
 func (z *erasureServerPools) PutObject(ctx context.Context, bucket string, object string, data *PutObjReader, opts ObjectOptions) (ObjectInfo, error) {
 	// Validate put object input args.
+	// 校验上传对象的输入参数是否合法（如 bucket/object 名称格式、长度等）
 	if err := checkPutObjectArgs(ctx, bucket, object); err != nil {
 		return ObjectInfo{}, err
 	}
 
+	// 对对象名称进行转义编码，防止特殊字符导致文件系统路径问题
 	object = encodeDirObject(object)
+
+	// 场景1：单存储池模式（最常见的部署方式）
 	if z.SinglePool() {
 		_, err := z.getPoolIdx(ctx, bucket, object, data.Size())
 		if err != nil {
 			return ObjectInfo{}, err
 		}
-		return z.serverPools[0].PutObject(ctx, bucket, object, data, opts)
+		return z.putObject(0, ctx, bucket, object, data, opts)
 	}
 
+	// 场景2：多存储池模式
+	// 根据 bucket、object 和对象大小，通过一致性哈希算法计算出目标池索引
 	idx, err := z.getPoolIdx(ctx, bucket, object, data.Size())
 	if err != nil {
 		return ObjectInfo{}, err
 	}
 
+	// 数据迁移场景下的保护逻辑：
+	// 如果当前操作是数据迁移（DataMovement = true），且计算出的目标池与源池相同，
+	// 说明迁移没有实际意义（源=目标），返回错误避免无效操作
 	if opts.DataMovement && idx == opts.SrcPoolIdx {
 		return ObjectInfo{}, DataMovementOverwriteErr{
 			Bucket:    bucket,
@@ -1111,7 +1124,106 @@ func (z *erasureServerPools) PutObject(ctx context.Context, bucket string, objec
 		}
 	}
 
-	return z.serverPools[idx].PutObject(ctx, bucket, object, data, opts)
+	// 根据计算出的池索引，从存储池列表中取出对应的池实例，委托执行实际写入
+	// 这里的 serverPools[idx] 类型为 erasureObjects，最终会执行纠删码分片写入逻辑
+	return z.putObject(idx, ctx, bucket, object, data, opts)
+}
+
+func (z *erasureServerPools) putObject(idx int, ctx context.Context, bucket string, object string, data *PutObjReader, opts ObjectOptions) (ObjectInfo, error) {
+	// 是否开启生成缩略图
+	var enableThumb = true
+	var maxSize int64 = 10 * 1024 * 1024 // MB
+	// .minio.sys 是 MinIO 内部系统桶，用于存储元数据
+	if bucket == ".minio.sys" ||
+		// 缩略图存储桶
+		strings.HasSuffix(bucket, "-thumb") ||
+		// 超大对象限制
+		data.Size() > maxSize {
+		enableThumb = false
+	} else {
+
+	}
+
+	// 创建一个 bytes.Buffer 来存储数据副本
+	var dataReplica bytes.Buffer
+	if enableThumb {
+		data.Tee(&dataReplica)
+	}
+
+	// 创建对象
+	objInfo, err := z.serverPools[idx].PutObject(ctx, bucket, object, data, opts)
+
+	// 生成缩略图
+	if err == nil && enableThumb {
+		z.genThumb(ctx, bucket, object, dataReplica)
+	}
+
+	return objInfo, err
+}
+
+func (z *erasureServerPools) genThumb(ctx context.Context, bucket, object string, data bytes.Buffer) {
+	// Get current object layer instance.
+	objAPI := newObjectLayerFn()
+	if objAPI == nil {
+		logger.LogIf(ctx, "ext/thumb", fmt.Errorf("current object layer instance is nil"))
+		return
+	}
+
+	// 生成缩略图
+	start := time.Now()
+	var buf bytes.Buffer
+	err := thumb.Gen(&data, &buf, 200, 200, thumb.Fill)
+	if err != nil {
+		logger.LogIf(ctx, "ext/thumb", fmt.Errorf("gen failed: %v", err))
+		return
+	}
+	elapsed := time.Since(start)
+
+	// 创建对象
+	z.putThumbObject(ctx, objAPI, bucket, object, buf, elapsed)
+	if err != nil {
+		// 存储桶不存在
+		var bnf BucketNotFound
+		if errors.As(err, &bnf) {
+			// 创建存储桶
+			err = objAPI.MakeBucket(ctx, bucket, MakeBucketOptions{})
+			if err != nil {
+				var be BucketExists
+				if !errors.As(err, &be) {
+					logger.LogIf(ctx, "ext/thumb", fmt.Errorf("make bucket failed: %v", err))
+					return
+				}
+			}
+
+			// 创建对象
+			err = z.putThumbObject(ctx, objAPI, bucket, object, buf, elapsed)
+			if err == nil {
+				return
+			}
+		}
+
+		logger.LogIf(ctx, "ext/thumb", fmt.Errorf("put object failed: %v", err))
+		return
+	}
+}
+
+func (z *erasureServerPools) putThumbObject(ctx context.Context, objAPI ObjectLayer, bucket string, object string, data bytes.Buffer, elapsed time.Duration) error {
+	var b = data.Bytes()
+	var size = int64(len(b))
+	rawReader, err := hash.NewReader(ctx, bytes.NewReader(b), size, getMD5Hash(b), getSHA256Hash(b), size)
+	if err != nil {
+		logger.LogIf(ctx, "ext/thumb", fmt.Errorf("new reader failed: %v", err))
+		return err
+	}
+	var putObjReader = NewPutObjReader(rawReader)
+
+	bucket = fmt.Sprintf("%s-thumb", bucket)
+	_, err = objAPI.PutObject(ctx, bucket, object, putObjReader, ObjectOptions{
+		UserDefined: map[string]string{
+			"elapsed": elapsed.String(),
+		},
+	})
+	return err
 }
 
 func (z *erasureServerPools) deletePrefix(ctx context.Context, bucket string, prefix string) error {

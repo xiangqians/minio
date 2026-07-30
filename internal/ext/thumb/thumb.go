@@ -48,7 +48,7 @@ import (
 // Linux
 //
 
-// Mode 定义缩略图生成模式
+// Mode 缩略图模式
 type Mode int
 
 const (
@@ -67,6 +67,7 @@ func (mode Mode) String() string {
 	}
 }
 
+// Startup 初始化缩略图模块
 func Startup() error {
 	// 启动 libvips（在整个程序生命周期中只需执行一次）
 	//config := &vips.Config{
@@ -76,13 +77,16 @@ func Startup() error {
 	return vips.Startup(nil)
 }
 
+// Shutdown 关闭缩略图模块，释放所有占用的资源
 func Shutdown() {
+	// 关闭 libvips 库连接、清理内存池、停止后台协程
 	vips.Shutdown()
 }
 
 // Gen 生成缩略图
 // width  宽度
 // height 高度
+// mode   模式
 func Gen(r io.Reader, w io.Writer, width, height int, mode Mode) error {
 	// 读取原始图片
 	data, err := io.ReadAll(r)

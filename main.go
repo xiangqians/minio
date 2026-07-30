@@ -30,13 +30,17 @@ import (
 	minio "github.com/minio/minio/cmd"
 )
 
+// Environment: CGO_ENABLED=1;PATH=C:\msys64\mingw64\bin;C:\msys64\usr\bin;%PATH%
 // Program arguments: server "D:\tmp\minio\data" --address ":9000" --console-address ":9001"
 
 func main() {
+	// 初始化缩略图模块
 	err := thumb.Startup()
 	if err != nil {
-		log.Fatalf("Error starting thumb: %v", err)
+		log.Printf("ext/thumb startup failed: %v\n", err)
+		return
 	}
+	// 关闭缩略图模块，释放所有占用的资源
 	defer thumb.Shutdown()
 
 	minio.Main(os.Args)
