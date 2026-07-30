@@ -8,7 +8,7 @@ MinIO in distributed mode can help you setup a highly-available storage system w
 
 ### Data protection
 
-Distributed MinIO provides protection against multiple node/drive failures and [bit rot](https://github.com/pgsty/minio/blob/master/docs/erasure/README.md#what-is-bit-rot-protection) using [erasure code](https://silo.pigsty.io/operations/concepts/erasure-coding.html). As the minimum drives required for distributed MinIO is 2 (same as minimum drives required for erasure coding), erasure code automatically kicks in as you launch distributed MinIO.
+Distributed MinIO provides protection against multiple node/drive failures and [bit rot](https://github.com/pgsty/minio/blob/master/docs/erasure/README.md#what-is-bit-rot-protection) using [erasure code](https://docs.min.io/community/minio-object-store/operations/concepts/erasure-coding.html). As the minimum drives required for distributed MinIO is 2 (same as minimum drives required for erasure coding), erasure code automatically kicks in as you launch distributed MinIO.
 
 If one or more drives are offline at the start of a PutObject or NewMultipartUpload operation the object will have additional data protection bits added automatically to provide additional safety for these objects.
 
@@ -38,11 +38,11 @@ Install MinIO either on Kubernetes or Distributed Linux.
 
 Install MinIO on Kubernetes:
 
-- [MinIO Quickstart Guide for Kubernetes](https://silo.pigsty.io/operations/deployments/kubernetes.html).
-- [Deploy a Tenant from the MinIO Operator](https://silo.pigsty.io/operations/deployments/k8s-deploy-minio-tenant-on-kubernetes.html)
+- [MinIO Quickstart Guide for Kubernetes](https://docs.min.io/community/minio-object-store/operations/deployments/kubernetes.html).
+- [Deploy a Tenant from the MinIO Operator](https://docs.min.io/community/minio-object-store/operations/deployments/k8s-deploy-minio-tenant-on-kubernetes.html)
 
 Install Distributed MinIO on Linux:
-- [Deploy Distributed MinIO on Linux](https://silo.pigsty.io/operations/install-deploy-manage/deploy-minio-multi-node-multi-drive.html#deploy-distributed-minio)
+- [Deploy Distributed MinIO on Linux](https://docs.min.io/community/minio-object-store/operations/install-deploy-manage/deploy-minio-multi-node-multi-drive.html#deploy-distributed-minio)
 
 ### 2. Run distributed MinIO
 
@@ -98,12 +98,12 @@ Now the server has expanded total storage by _(newly_added_servers\*m)_ more dri
 
 ## 3. Test your setup
 
-To test this setup, access the MinIO server via browser or [`mc`](https://silo.pigsty.io/reference/minio-mc.html#quickstart).
+To test this setup, access the MinIO server via browser or [`mc`](https://docs.min.io/community/minio-object-store/reference/minio-mc.html#quickstart).
 
 ## Explore Further
 
-- [MinIO Erasure Code QuickStart Guide](https://silo.pigsty.io/operations/concepts/erasure-coding.html)
-- [Use `mc` with MinIO Server](https://silo.pigsty.io/reference/minio-mc.html)
-- [Use `aws-cli` with MinIO Server](https://silo.pigsty.io/integrations/aws-cli-with-minio.html)
-- [Use `minio-go` SDK with MinIO Server](https://silo.pigsty.io/developers/go/minio-go.html)
-- [The MinIO documentation website](https://silo.pigsty.io/index.html)
+- [MinIO Erasure Code QuickStart Guide](https://docs.min.io/community/minio-object-store/operations/concepts/erasure-coding.html)
+- [Use `mc` with MinIO Server](https://docs.min.io/community/minio-object-store/reference/minio-mc.html)
+- [Use `aws-cli` with MinIO Server](https://docs.min.io/community/minio-object-store/integrations/aws-cli-with-minio.html)
+- [Use `minio-go` SDK with MinIO Server](https://docs.min.io/community/minio-object-store/developers/go/minio-go.html)
+- [The MinIO documentation website](https://docs.min.io/community/minio-object-store/index.html)

@@ -6,7 +6,7 @@ This document explains how to configure MinIO with `Bucket lookup from DNS` styl
 
 ### 1. Prerequisites
 
-Install MinIO - [MinIO Quickstart Guide](https://silo.pigsty.io/operations/deployments/baremetal-deploy-minio-on-redhat-linux.html).
+Install MinIO - [MinIO Quickstart Guide](https://docs.min.io/community/minio-object-store/operations/deployments/baremetal-deploy-minio-on-redhat-linux.html).
 
 ### 2. Run MinIO in federated mode
 
@@ -76,11 +76,11 @@ it is randomized which cluster might provision the bucket.
 
 ### 3. Test your setup
 
-To test this setup, access the MinIO server via browser or [`mc`](https://silo.pigsty.io/reference/minio-mc.html#quickstart). You’ll see the uploaded files are accessible from the all the MinIO endpoints.
+To test this setup, access the MinIO server via browser or [`mc`](https://docs.min.io/community/minio-object-store/reference/minio-mc.html#quickstart). You’ll see the uploaded files are accessible from the all the MinIO endpoints.
 
 ## Explore Further
 
-- [Use `mc` with MinIO Server](https://silo.pigsty.io/reference/minio-mc.html)
-- [Use `aws-cli` with MinIO Server](https://silo.pigsty.io/integrations/aws-cli-with-minio.html)
-- [Use `minio-go` SDK with MinIO Server](https://silo.pigsty.io/developers/go/minio-go.html)
-- [The MinIO documentation website](https://silo.pigsty.io/index.html)
+- [Use `mc` with MinIO Server](https://docs.min.io/community/minio-object-store/reference/minio-mc.html)
+- [Use `aws-cli` with MinIO Server](https://docs.min.io/community/minio-object-store/integrations/aws-cli-with-minio.html)
+- [Use `minio-go` SDK with MinIO Server](https://docs.min.io/community/minio-object-store/developers/go/minio-go.html)
+- [The MinIO documentation website](https://docs.min.io/community/minio-object-store/index.html)

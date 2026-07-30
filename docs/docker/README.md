@@ -10,7 +10,7 @@ Docker installed on your machine. Download the relevant installer from [here](ht
 
 ## Run Standalone MinIO on Docker
 
-*Note*: Standalone MinIO is intended for early development and evaluation. For production clusters, deploy a [Distributed](https://silo.pigsty.io/operations/deployments/baremetal-deploy-minio-as-a-container.html) MinIO deployment.
+*Note*: Standalone MinIO is intended for early development and evaluation. For production clusters, deploy a [Distributed](https://docs.min.io/community/minio-object-store/operations/deployments/baremetal-deploy-minio-as-a-container.html) MinIO deployment.
 
 MinIO needs a persistent volume to store configuration and application data. For testing purposes, you can launch MinIO by simply passing a directory (`/data` in the example below). This directory gets created in the container filesystem at the time of container start. But all the data is lost after container exits.
 
@@ -59,7 +59,7 @@ docker run \
 
 We recommend kubernetes based deployment for production level deployment <https://github.com/minio/operator>.
 
-See the [Kubernetes documentation](https://silo.pigsty.io/operations/deployments/kubernetes.html) for more information.
+See the [Kubernetes documentation](https://docs.min.io/community/minio-object-store/operations/deployments/kubernetes.html) for more information.
 
 ## MinIO Docker Tips
 
@@ -213,5 +213,5 @@ docker stats <container_id>
 
 ## Explore Further
 
-* [MinIO in a Container Installation Guide](https://silo.pigsty.io/operations/deployments/baremetal-deploy-minio-as-a-container.html)
-* [MinIO Erasure Code QuickStart Guide](https://silo.pigsty.io/operations/concepts/erasure-coding.html)
+* [MinIO in a Container Installation Guide](https://docs.min.io/community/minio-object-store/operations/deployments/baremetal-deploy-minio-as-a-container.html)
+* [MinIO Erasure Code QuickStart Guide](https://docs.min.io/community/minio-object-store/operations/concepts/erasure-coding.html)

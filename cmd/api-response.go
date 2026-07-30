@@ -1060,12 +1060,6 @@ func (w *trackingResponseWriter) Write(b []byte) (int, error) {
 	return w.ResponseWriter.Write(b)
 }
 
-func (w *trackingResponseWriter) Flush() {
-	if f, ok := w.ResponseWriter.(http.Flusher); ok {
-		f.Flush()
-	}
-}
-
 func (w *trackingResponseWriter) Unwrap() http.ResponseWriter {
 	return w.ResponseWriter
 }

@@ -78,8 +78,8 @@ For deployments behind a load balancer, use the load balancer hostname instead o
 
 ## Cluster Replication Metrics
 
-Metrics marked as ``Site Replication Only`` only populate on deployments with [Site Replication](https://silo.pigsty.io/operations/install-deploy-manage/multi-site-replication.html) configurations.
-For deployments with [bucket](https://silo.pigsty.io/administration/bucket-replication.html) or [batch](https://silo.pigsty.io/administration/batch-framework.html#replicate) configurations, these metrics populate instead under the [Bucket Metrics](#bucket-metrics) endpoint.
+Metrics marked as ``Site Replication Only`` only populate on deployments with [Site Replication](https://docs.min.io/community/minio-object-store/operations/install-deploy-manage/multi-site-replication.html) configurations.
+For deployments with [bucket](https://docs.min.io/community/minio-object-store/administration/bucket-replication.html) or [batch](https://docs.min.io/community/minio-object-store/administration/batch-framework.html#replicate) configurations, these metrics populate instead under the [Bucket Metrics](#bucket-metrics) endpoint.
 
 | Name                                                       | Description                                                                                             
 |:-----------------------------------------------------------|:---------------------------------------------------------------------------------------------------------|
@@ -108,8 +108,8 @@ For deployments with [bucket](https://silo.pigsty.io/administration/bucket-repli
 
 ## Node Replication Metrics
 
-Metrics marked as ``Site Replication Only`` only populate on deployments with [Site Replication](https://silo.pigsty.io/operations/install-deploy-manage/multi-site-replication.html) configurations.
-For deployments with [bucket](https://silo.pigsty.io/administration/bucket-replication.html) or [batch](https://silo.pigsty.io/administration/batch-framework.html#replicate) configurations, these metrics populate instead under the [Bucket Metrics](#bucket-metrics) endpoint.
+Metrics marked as ``Site Replication Only`` only populate on deployments with [Site Replication](https://docs.min.io/community/minio-object-store/operations/install-deploy-manage/multi-site-replication.html) configurations.
+For deployments with [bucket](https://docs.min.io/community/minio-object-store/administration/bucket-replication.html) or [batch](https://docs.min.io/community/minio-object-store/administration/batch-framework.html#replicate) configurations, these metrics populate instead under the [Bucket Metrics](#bucket-metrics) endpoint.
 
 | Name                                                       | Description
 |:-----------------------------------------------------------|:---------------------------------------------------------------------------------------------------------|
@@ -296,8 +296,8 @@ For deployments behind a load balancer, use the load balancer hostname instead o
 
 ## Replication Metrics
 
-These metrics only populate on deployments with [Bucket Replication](https://silo.pigsty.io/administration/bucket-replication.html) or [Batch Replication](https://silo.pigsty.io/administration/batch-framework.html) configurations.
-For deployments with [Site Replication](https://silo.pigsty.io/operations/install-deploy-manage/multi-site-replication.html) configured, select metrics populate under the [Cluster Metrics](#cluster-metrics) endpoint.
+These metrics only populate on deployments with [Bucket Replication](https://docs.min.io/community/minio-object-store/administration/bucket-replication.html) or [Batch Replication](https://docs.min.io/community/minio-object-store/administration/batch-framework.html) configurations.
+For deployments with [Site Replication](https://docs.min.io/community/minio-object-store/operations/install-deploy-manage/multi-site-replication.html) configured, select metrics populate under the [Cluster Metrics](#cluster-metrics) endpoint.
 
 | Name                                                | Description                                                                      |
 |:----------------------------------------------------|:---------------------------------------------------------------------------------|

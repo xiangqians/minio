@@ -24,7 +24,6 @@ import (
 	"testing"
 
 	"github.com/klauspost/compress/gzhttp"
-	xhttp "github.com/minio/minio/internal/http"
 )
 
 // Tests object location.
@@ -157,29 +156,6 @@ func TestTrackingResponseWriter(t *testing.T) {
 	// Check that Unwrap works
 	if trw.Unwrap() != rw {
 		t.Fatalf("Unwrap returned wrong result: %v", trw.Unwrap())
-	}
-}
-
-func TestTrackingResponseWriterFlush(t *testing.T) {
-	rw := httptest.NewRecorder()
-	trw := &trackingResponseWriter{ResponseWriter: rw}
-
-	trw.Flush()
-	if trw.headerWritten {
-		t.Fatal("Flush() should not set headerWritten")
-	}
-
-	// Simulate the ListenNotificationHandler flow: WriteHeader, Write, Flush
-	trw.WriteHeader(http.StatusOK)
-	_, err := trw.Write([]byte("event data"))
-	if err != nil {
-		t.Fatalf("Write failed: %v", err)
-	}
-
-	xhttp.Flush(trw)
-
-	if !rw.Flushed {
-		t.Fatalf("xhttp.Flush should have flushed the underlying ResponseRecorder via trackingResponseWriter.Flush()")
 	}
 }
 

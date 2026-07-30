@@ -106,5 +106,5 @@ These credentials can now be used to perform MinIO API operations.
 
 ## Explore Further
 
-- [MinIO Admin Complete Guide](https://silo.pigsty.io/reference/minio-mc-admin.html)
-- [The MinIO documentation website](https://silo.pigsty.io/index.html)
+- [MinIO Admin Complete Guide](https://docs.min.io/community/minio-object-store/reference/minio-mc-admin.html)
+- [The MinIO documentation website](https://docs.min.io/community/minio-object-store/index.html)

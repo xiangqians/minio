@@ -112,5 +112,5 @@ This will open the login page of Casdoor, upon successful login, STS credentials
 ## Explore Further
 
 - [Casdoor MinIO Integration](https://casdoor.org/docs/integration/minio)
-- [MinIO STS Quickstart Guide](https://silo.pigsty.io/developers/security-token-service.html)
-- [The MinIO documentation website](https://silo.pigsty.io/index.html)
+- [MinIO STS Quickstart Guide](https://docs.min.io/community/minio-object-store/developers/security-token-service.html)
+- [The MinIO documentation website](https://docs.min.io/community/minio-object-store/index.html)

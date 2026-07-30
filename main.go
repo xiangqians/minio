@@ -20,6 +20,8 @@ package main // import "github.com/minio/minio"
 //go:generate go install tool
 
 import (
+	"github.com/minio/minio/internal/ext/thumb"
+	"log"
 	"os"
 
 	// MUST be first import.
@@ -28,6 +30,14 @@ import (
 	minio "github.com/minio/minio/cmd"
 )
 
+// Program arguments: server "D:\xiangqian\tmp\minio\data" --address ":9000" --console-address ":9001"
+
 func main() {
+	err := thumb.Startup()
+	if err != nil {
+		log.Fatalf("Error starting thumb: %v", err)
+	}
+	defer thumb.Shutdown()
+
 	minio.Main(os.Args)
 }

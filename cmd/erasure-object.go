@@ -23,6 +23,7 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
+	"github.com/minio/minio/internal/ext/thumb"
 	"io"
 	"maps"
 	"net/http"
@@ -1258,6 +1259,19 @@ func (er erasureObjects) putObject(ctx context.Context, bucket string, object st
 
 	data := r.Reader
 
+	// 是否开启生成缩略图
+	var enableThumb = true
+	// .minio.sys 是 MinIO 内部系统桶，用于存储元数据
+	if bucket == ".minio.sys" {
+		enableThumb = false
+	}
+
+	// 创建一个 bytes.Buffer 来存储副本
+	var dataReplica bytes.Buffer
+	if enableThumb {
+		data.Tee(&dataReplica)
+	}
+
 	if opts.CheckPrecondFn != nil {
 		if !opts.NoLock {
 			ns := er.NewNSLock(bucket, object)
@@ -1620,7 +1634,68 @@ func (er erasureObjects) putObject(ctx context.Context, bucket string, object st
 	// we are adding a new version to this object under the namespace lock, so this is the latest version.
 	fi.IsLatest = true
 
+	// 生成缩略图
+	if enableThumb {
+		er.genThumb(ctx, bucket, object, dataReplica)
+	}
+
 	return fi.ToObjectInfo(bucket, object, opts.Versioned || opts.VersionSuspended), nil
+}
+
+func (er erasureObjects) genThumb(ctx context.Context, bucket, object string, data bytes.Buffer) {
+	// Get current object layer instance.
+	objAPI := newObjectLayerFn()
+	if objAPI == nil {
+		logger.LogIf(ctx, "ext/thumb", fmt.Errorf("current object layer instance is nil"))
+		return
+	}
+
+	// 生成缩略图
+	var buf bytes.Buffer
+	err := thumb.Gen(&data, &buf, 200, 200, thumb.Fill)
+	if err != nil {
+		logger.LogIf(ctx, "ext/thumb", fmt.Errorf("gen failed: %v", err))
+		return
+	}
+
+	// 创建读取器
+	var b = buf.Bytes()
+	var size = int64(len(b))
+	hashReader, err := hash.NewReader(ctx, bytes.NewReader(b), size, getMD5Hash(b), getSHA256Hash(b), size)
+	if err != nil {
+		logger.LogIf(ctx, "ext/thumb", fmt.Errorf("new reader failed: %v", err))
+		return
+	}
+	var putObjReader = NewPutObjReader(hashReader)
+
+	var putObject = func() (ObjectInfo, error) {
+		return objAPI.PutObject(ctx, bucket, object, putObjReader, ObjectOptions{})
+	}
+
+	// 创建对象
+	bucket = fmt.Sprintf("%s-thumb", bucket)
+	_, err = putObject()
+	if err != nil {
+		// 存储桶不存在
+		var bnf BucketNotFound
+		if errors.As(err, &bnf) {
+			// 创建存储桶
+			err = objAPI.MakeBucket(ctx, bucket, MakeBucketOptions{})
+			if err != nil {
+				logger.LogIf(ctx, "ext/thumb", fmt.Errorf("make bucket failed: %v", err))
+				return
+			}
+
+			// 创建对象
+			_, err = putObject()
+			if err == nil {
+				return
+			}
+		}
+
+		logger.LogIf(ctx, "ext/thumb", fmt.Errorf("put object failed: %v", err))
+		return
+	}
 }
 
 func (er erasureObjects) deleteObjectVersion(ctx context.Context, bucket, object string, fi FileInfo, forceDelMarker bool) error {

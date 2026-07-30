@@ -4,8 +4,8 @@ Enable object lifecycle configuration on buckets to setup automatic deletion of 
 
 ## 1. Prerequisites
 
-- Install MinIO - [MinIO Quickstart Guide](https://silo.pigsty.io/operations/deployments/baremetal-deploy-minio-on-redhat-linux.html).
-- Install `mc` - [mc Quickstart Guide](https://silo.pigsty.io/reference/minio-mc.html#quickstart)
+- Install MinIO - [MinIO Quickstart Guide](https://docs.min.io/community/minio-object-store/operations/deployments/baremetal-deploy-minio-on-redhat-linux.html).
+- Install `mc` - [mc Quickstart Guide](https://docs.min.io/community/minio-object-store/reference/minio-mc.html#quickstart)
 
 ## 2. Enable bucket lifecycle configuration
 
@@ -59,7 +59,7 @@ TempUploads |  temp/   |    ✓       |  ✓     |   7 day(s)   |     ✗       
 
 ## 3. Activate ILM versioning features
 
-This will only work with a versioned bucket, take a look at [Bucket Versioning Guide](https://silo.pigsty.io/administration/object-management/object-versioning.html) for more understanding.
+This will only work with a versioned bucket, take a look at [Bucket Versioning Guide](https://docs.min.io/community/minio-object-store/administration/object-management/object-versioning.html) for more understanding.
 
 ### 3.1 Automatic removal of non current objects versions
 
@@ -228,5 +228,5 @@ Note that transition event notification is a MinIO extension.
 
 ## Explore Further
 
-- [MinIO | Golang Client API Reference](https://silo.pigsty.io/developers/go/API.html)
+- [MinIO | Golang Client API Reference](https://docs.min.io/community/minio-object-store/developers/go/API.html)
 - [Object Lifecycle Management](https://docs.aws.amazon.com/AmazonS3/latest/dev/object-lifecycle-mgmt.html)

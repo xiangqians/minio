@@ -19,7 +19,7 @@ will increase speed when the content can be compressed.
 
 ### 1. Prerequisites
 
-Install MinIO - [MinIO Quickstart Guide](https://silo.pigsty.io/operations/deployments/baremetal-deploy-minio-on-redhat-linux.html).
+Install MinIO - [MinIO Quickstart Guide](https://docs.min.io/community/minio-object-store/operations/deployments/baremetal-deploy-minio-on-redhat-linux.html).
 
 ### 2. Run MinIO with compression
 
@@ -131,7 +131,7 @@ the data directory to view the size of the object.
 
 ## Explore Further
 
-- [Use `mc` with MinIO Server](https://silo.pigsty.io/reference/minio-mc.html)
-- [Use `aws-cli` with MinIO Server](https://silo.pigsty.io/integrations/aws-cli-with-minio.html)
-- [Use `minio-go` SDK with MinIO Server](https://silo.pigsty.io/developers/go/minio-go.html)
-- [The MinIO documentation website](https://silo.pigsty.io/index.html)
+- [Use `mc` with MinIO Server](https://docs.min.io/community/minio-object-store/reference/minio-mc.html)
+- [Use `aws-cli` with MinIO Server](https://docs.min.io/community/minio-object-store/integrations/aws-cli-with-minio.html)
+- [Use `minio-go` SDK with MinIO Server](https://docs.min.io/community/minio-object-store/developers/go/minio-go.html)
+- [The MinIO documentation website](https://docs.min.io/community/minio-object-store/index.html)

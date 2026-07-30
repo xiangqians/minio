@@ -10,7 +10,7 @@ A default retention period and retention mode can be configured on a bucket to b
 
 ### 1. Prerequisites
 
-- Install MinIO - [MinIO Quickstart Guide](https://silo.pigsty.io/operations/deployments/baremetal-deploy-minio-on-redhat-linux.html)
+- Install MinIO - [MinIO Quickstart Guide](https://docs.min.io/community/minio-object-store/operations/deployments/baremetal-deploy-minio-on-redhat-linux.html)
 - Install `awscli` - [Installing AWS Command Line Interface](https://docs.aws.amazon.com/cli/latest/userguide/cli-chap-install.html)
 
 ### 2. Set bucket WORM configuration
@@ -53,7 +53,7 @@ See <https://docs.aws.amazon.com/AmazonS3/latest/dev/object-lock-overview.html> 
 
 ## Explore Further
 
-- [Use `mc` with MinIO Server](https://silo.pigsty.io/reference/minio-mc.html#quickstart)
-- [Use `aws-cli` with MinIO Server](https://silo.pigsty.io/integrations/aws-cli-with-minio.html)
-- [Use `minio-go` SDK with MinIO Server](https://silo.pigsty.io/developers/go/minio-go.html)
-- [The MinIO documentation website](https://silo.pigsty.io/index.html)
+- [Use `mc` with MinIO Server](https://docs.min.io/community/minio-object-store/reference/minio-mc.html#quickstart)
+- [Use `aws-cli` with MinIO Server](https://docs.min.io/community/minio-object-store/integrations/aws-cli-with-minio.html)
+- [Use `minio-go` SDK with MinIO Server](https://docs.min.io/community/minio-object-store/developers/go/minio-go.html)
+- [The MinIO documentation website](https://docs.min.io/community/minio-object-store/index.html)
