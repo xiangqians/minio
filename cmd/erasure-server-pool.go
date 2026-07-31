@@ -24,6 +24,7 @@ import (
 	"fmt"
 	"github.com/minio/minio/internal/ext/thumb"
 	"github.com/minio/minio/internal/hash"
+	"github.com/minio/pkg/v3/mimedb"
 	"io"
 	"math/rand"
 	"net/http"
@@ -1130,18 +1131,30 @@ func (z *erasureServerPools) PutObject(ctx context.Context, bucket string, objec
 }
 
 func (z *erasureServerPools) putObject(idx int, ctx context.Context, bucket string, object string, data *PutObjReader, opts ObjectOptions) (ObjectInfo, error) {
-	// 是否开启生成缩略图
+	// 默认启用缩略图生成
 	var enableThumb = true
-	var maxSize int64 = 10 * 1024 * 1024 // MB
-	// .minio.sys 是 MinIO 内部系统桶，用于存储元数据
+
+	// 获取对象内容类型
+	// 优先使用用户通过元数据指定的 Content-Type
+	// 若未指定，则根据文件扩展名自动推断
+	var contentType = opts.UserDefined["content-type"]
+	if contentType == "" {
+		contentType = mimedb.TypeByExtension(path.Ext(object))
+	}
+
+	// 对象最大限制
+	var maxSize int64 = 10 * 1024 * 1024 // 10 MB
+
+	// 以下情况不生成缩略图：
+	// 1）MinIO 系统内部存储桶（存储元数据）
 	if bucket == ".minio.sys" ||
-		// 缩略图存储桶
+		// 2）缩略图存储桶（避免递归生成）
 		strings.HasSuffix(bucket, "-thumb") ||
-		// 超大对象限制
+		// 3）非图片类型对象
+		!strings.HasPrefix(contentType, "image/") ||
+		// 4）超过最大限制的对象
 		data.Size() > maxSize {
 		enableThumb = false
-	} else {
-
 	}
 
 	// 创建一个 bytes.Buffer 来存储数据副本
@@ -1179,7 +1192,7 @@ func (z *erasureServerPools) genThumb(ctx context.Context, bucket, object string
 	}
 	elapsed := time.Since(start)
 
-	// 创建对象
+	// 创建缩略图对象
 	z.putThumbObject(ctx, objAPI, bucket, object, buf, elapsed)
 	if err != nil {
 		// 存储桶不存在
