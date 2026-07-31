@@ -12,42 +12,6 @@ import (
 	"log"
 )
 
-// 版本要求：Go 1.23+，libvips 8.14+
-
-// Windows
-// 1、下载并安装 MSYS2
-// https://www.msys2.org/
-// msys2-x86_64-20260611.exe
-// 下载安装程序并安装（建议默认路径 C:\msys64）
-// 2、打开 "MSYS2 MINGW64" 终端
-// 更新包数据库
-// $ pacman -Syu
-// 安装 pkg-config 工具，用于向 MinGW 编译器提供库的编译和链接参数
-// $ pacman -S mingw-w64-x86_64-pkg-config
-// 安装 gcc
-// $ pacman -S mingw-w64-x86_64-gcc
-// 搜索并安装 libvips
-// $ pacman -Ss libvips
-// $ pacman -S mingw-w64-x86_64-libvips
-// 安装图像处理库依赖（libjpeg, libpng, libtiff, libwebp, librsvg）
-// $ pacman -S mingw-w64-x86_64-{libjpeg-turbo,libpng,libtiff,libwebp,librsvg}
-// 3、验证安装
-// 检查 gcc 是否可用
-// $ gcc --version
-// 检查 libvips 是否安装成功
-// $ pkg-config --modversion vips
-// 检查 libvips 的库文件位置
-// $ pkg-config --libs vips
-// $ pkg-config --cflags vips
-// 如果输出中，头文件搜索路径 -I/mingw64/include 使用的是 Unix 风格路径（/mingw64/...），
-// 而不是 Windows 绝对路径（如 C:/msys64/mingw64/...）时，Go 的 CGO 编译器可能无法正确解析。
-// 解决方案：强制 pkg-config 使用完整的 Windows 路径
-// $ export PKG_CONFIG_SYSROOT_DIR=C:/msys64/mingw64
-// 4、将 C:\msys64\mingw64\bin 和 C:\msys64\usr\bin 添加到系统 PATH
-
-// Linux
-//
-
 // Mode 缩略图模式
 type Mode int
 
@@ -59,9 +23,9 @@ const (
 func (mode Mode) String() string {
 	switch mode {
 	case Fit:
-		return fmt.Sprintf("fit(%d)", mode)
+		return "fit"
 	case Fill:
-		return fmt.Sprintf("fill(%d)", mode)
+		return "fill"
 	default:
 		return fmt.Sprintf("unknown(%d)", mode)
 	}
