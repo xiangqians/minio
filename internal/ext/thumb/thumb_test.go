@@ -5,19 +5,22 @@ package thumb
 import (
 	"bytes"
 	"fmt"
-	"github.com/u2takey/ffmpeg-go"
+	"io"
 	"log"
 	"os"
+	"strings"
 	"testing"
 )
 
 // IDEA
 // Environment: CGO_ENABLED=1;PATH=C:\msys64\mingw64\bin;C:\msys64\usr\bin;%PATH%
 
+// 测试 C
 func TestC(t *testing.T) {
 	c()
 }
 
+// 测试生成图片缩略图
 func TestImgGen(t *testing.T) {
 	// 初始化缩略图模块
 	err := Startup()
@@ -53,36 +56,70 @@ func TestImgGen(t *testing.T) {
 	log.Printf("缩略图生成成功：%s\n", dst)
 }
 
+// 测试生成视频缩略图
 func TestVidGen(t *testing.T) {
 	// 视频文件名
-	var vidName = "D:\\tmp\\minio\\tmp\\test26.mp4"
+	var vidName = "D:\\tmp\\minio\\tmp\\test-26.mp4"
+	vidName = "D:\\tmp\\minio\\tmp\\test-174.mp4"
 
-	// 要截取的时间点（单位：秒）
-	var seekSecond = 2
-	// 截取图片文件名
-	var imgName = fmt.Sprintf("D:\\tmp\\minio\\tmp\\test26_%d.jpeg", seekSecond)
-
-	// 创建字节缓冲区，用于接收 ffmpeg 输出的图片数据
-	buf := bytes.NewBuffer(nil)
-
-	// 链式调用 ffmpeg 命令
-	err := ffmpeg_go.Input(vidName,
-		ffmpeg_go.KwArgs{"ss": seekSecond - 1}). // 粗略快速跳转到目标时间前 1 秒
-		Output("pipe:", ffmpeg_go.KwArgs{
-			"vframes": 1,        // 只输出 1 帧
-			"format":  "image2", // 输出格式为图片
-			"vcodec":  "mjpeg",  // 编码为 JPEG
-			"ss":      1,        // 在上次跳转的基础上，再精确前进 1 秒
-		}).
-		WithOutput(buf).
-		Run()
+	// 打开文件
+	file, err := os.Open(vidName)
 	if err != nil {
-		log.Fatalf("ffmpeg run failed: %v", err)
+		fmt.Sprintf("open file failed: %v", err)
+		return
 	}
+	defer file.Close()
 
-	// 直接将字节数据写入文件
-	err = os.WriteFile(imgName, buf.Bytes(), 0644)
-	if err != nil {
-		log.Fatalf("write file failed: %v", err)
+	// 创建字节缓冲区，用于存储将要传递给 ffmpeg 的视频数据
+	var b = make([]byte, 1024*1024)
+	var r = bytes.NewBuffer(nil)
+
+	for {
+		n, err := file.Read(b)
+		if n > 0 {
+			r.Write(b[:n])
+
+			var seekSecond = 1
+
+			// 创建字节缓冲区，用于接收 ffmpeg 输出的图片数据
+			var w = bytes.NewBuffer(nil)
+
+			err = VidGen(bytes.NewReader(r.Bytes()), w, seekSecond, 200, 200, Fill)
+			if err != nil {
+				continue
+			}
+
+			// 直接将字节数据写入文件
+			if w.Len() > 0 {
+				var index = strings.LastIndex(vidName, ".")
+				var imgName = fmt.Sprintf("%s_%ds.jpeg", vidName[:index], seekSecond)
+				err = os.WriteFile(imgName, w.Bytes(), 0644)
+				if err != nil {
+					log.Fatalf("write file failed: %v", err)
+				}
+			}
+			log.Printf("read %s\n", formatBytes(int64(w.Len())))
+			break
+		}
+		if err != nil {
+			if err == io.EOF {
+				break
+			}
+			log.Printf("read file failed: %v\n", err)
+			return
+		}
+	}
+}
+
+func formatBytes(b int64) string {
+	switch {
+	case b >= 1<<30:
+		return fmt.Sprintf("%.2f GB", float64(b)/(1<<30))
+	case b >= 1<<20:
+		return fmt.Sprintf("%.2f MB", float64(b)/(1<<20))
+	case b >= 1<<10:
+		return fmt.Sprintf("%.2f KB", float64(b)/(1<<10))
+	default:
+		return fmt.Sprintf("%d B", b)
 	}
 }

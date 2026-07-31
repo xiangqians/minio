@@ -8,6 +8,7 @@ import "C"
 import (
 	"fmt"
 	"github.com/davidbyttow/govips/v2/vips"
+	ffmpeg "github.com/u2takey/ffmpeg-go"
 	"io"
 	"log"
 )
@@ -47,7 +48,9 @@ func Shutdown() {
 	vips.Shutdown()
 }
 
-// Gen 生成缩略图
+// Gen 生成图片缩略图
+// r      图片数据流
+// w      缩略图数据流
 // width  宽度
 // height 高度
 // mode   模式
@@ -93,6 +96,30 @@ func Gen(r io.Reader, w io.Writer, width, height int, mode Mode) error {
 		return fmt.Errorf("write data failed: %v", err)
 	}
 	return nil
+}
+
+// VidGen 生成视频缩略图
+// r          视频数据流
+// w          缩略图数据流
+// seekSecond 要截取视频的时间点（单位：秒）
+// width      宽度
+// height     高度
+// mode       模式
+func VidGen(r io.Reader, w io.Writer, seekSecond, width, height int, mode Mode) error {
+	// 链式调用 ffmpeg 命令从视频数据中截取指定时间点的画面
+	return ffmpeg.Input("pipe:", // 输入源为标准输入（stdin）
+		ffmpeg.KwArgs{}).
+		WithInput(r). // 将缓冲区作为输入数据写入 ffmpeg 的标准输入（stdin）
+		Output("pipe:", // 输出到标准输出（stdout）
+			ffmpeg.KwArgs{
+				"vframes": 1,          // 只输出 1 帧
+				"format":  "image2",   // 输出格式为图片
+				"vcodec":  "mjpeg",    // 编码为 JPEG
+				"ss":      seekSecond, // 截取指定时间点
+			},
+		).
+		WithOutput(w).
+		Run()
 }
 
 func c() {
