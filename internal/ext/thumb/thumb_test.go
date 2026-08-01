@@ -21,7 +21,7 @@ func TestC(t *testing.T) {
 }
 
 // 测试生成图片缩略图（WebP 格式）
-func TestImgGen(t *testing.T) {
+func TestGenImg(t *testing.T) {
 	// 初始化缩略图模块
 	err := Startup()
 	if err != nil {
@@ -49,7 +49,7 @@ func TestImgGen(t *testing.T) {
 	defer w.Close()
 
 	// 生成缩略图
-	err = ImgGen(r, w, 200, 200, Fit)
+	err = GenImg(r, w, 200, 200, Fit)
 	if err != nil {
 		log.Fatalf("thumb gen failed: %v", err)
 	}
@@ -57,7 +57,7 @@ func TestImgGen(t *testing.T) {
 }
 
 // 测试生成视频缩略图（WebP 格式）
-func TestVidGen(t *testing.T) {
+func TestGenVid(t *testing.T) {
 	// 视频文件名
 	var vidName = "D:\\tmp\\minio\\tmp\\test.mp4"
 
@@ -82,7 +82,7 @@ func TestVidGen(t *testing.T) {
 			var w = bytes.NewBuffer(nil)
 
 			// 生成视频缩略图
-			err = VidGen(bytes.NewReader(r.Bytes()), w, 200, 200, Fit)
+			err = GenVid(bytes.NewReader(r.Bytes()), w, 200, 200, Fit)
 			if err != nil {
 				continue
 			}

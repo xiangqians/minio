@@ -1103,7 +1103,7 @@ func (z *erasureServerPools) PutObject(ctx context.Context, bucket string, objec
 		if err != nil {
 			return ObjectInfo{}, err
 		}
-		return z.putObject(0, ctx, bucket, object, data, opts)
+		return z.putObjectWithThumb(0, ctx, bucket, object, data, opts)
 	}
 
 	// 场景2：多存储池模式
@@ -1127,12 +1127,51 @@ func (z *erasureServerPools) PutObject(ctx context.Context, bucket string, objec
 
 	// 根据计算出的池索引，从存储池列表中取出对应的池实例，委托执行实际写入
 	// 这里的 serverPools[idx] 类型为 erasureObjects，最终会执行纠删码分片写入逻辑
-	return z.putObject(idx, ctx, bucket, object, data, opts)
+	return z.putObjectWithThumb(idx, ctx, bucket, object, data, opts)
 }
 
 func (z *erasureServerPools) putObject(idx int, ctx context.Context, bucket string, object string, data *PutObjReader, opts ObjectOptions) (ObjectInfo, error) {
-	// 默认启用缩略图生成
-	var enableThumb = true
+	return z.serverPools[idx].PutObject(ctx, bucket, object, data, opts)
+}
+
+func (z *erasureServerPools) putObjectWithThumb(idx int, ctx context.Context, bucket string, object string, data *PutObjReader, opts ObjectOptions) (ObjectInfo, error) {
+	// 获取分流缓存器
+	var teeBuffer = z.getTeeBuffer(bucket, object, data, opts)
+	if teeBuffer != nil {
+		data.Tee(teeBuffer)
+	}
+
+	// 创建对象
+	objInfo, err := z.putObject(idx, ctx, bucket, object, data, opts)
+
+	// 生成缩略图
+	if err == nil && teeBuffer != nil {
+		z.genThumb(ctx, bucket, object, teeBuffer)
+	}
+
+	return objInfo, err
+}
+
+// getTeeBuffer 获取分流缓存器
+func (z *erasureServerPools) getTeeBuffer(bucket, object string, data *PutObjReader, opts ObjectOptions) TeeBuffer {
+	//var thumbEnabled = true
+
+	// MinIO 系统内部存储桶（存储元数据）
+	if bucket == ".minio.sys" {
+		return nil
+	}
+
+	// 缩略图存储桶（避免递归生成）
+	if strings.HasSuffix(bucket, "-thumb") {
+		return nil
+	}
+
+	// 对象最大限制
+	var maxSize int64 = 100 * 1024 * 1024 // 100 MB
+	// 超过最大限制的对象
+	if data.Size() > maxSize {
+		return nil
+	}
 
 	// 获取对象内容类型
 	// 优先使用用户通过元数据指定的 Content-Type
@@ -1142,39 +1181,66 @@ func (z *erasureServerPools) putObject(idx int, ctx context.Context, bucket stri
 		contentType = mimedb.TypeByExtension(path.Ext(object))
 	}
 
-	// 对象最大限制
-	var maxSize int64 = 10 * 1024 * 1024 // 10 MB
-
-	// 以下情况不生成缩略图：
-	// 1）MinIO 系统内部存储桶（存储元数据）
-	if bucket == ".minio.sys" ||
-		// 2）缩略图存储桶（避免递归生成）
-		strings.HasSuffix(bucket, "-thumb") ||
-		// 3）非图片类型对象
-		!strings.HasPrefix(contentType, "image/") ||
-		// 4）超过最大限制的对象
-		data.Size() > maxSize {
-		enableThumb = false
+	// 图片类型对象 — 分流缓存器
+	if strings.HasPrefix(contentType, "image/") {
+		return &ImgTeeBuffer{}
 	}
 
-	// 创建一个 bytes.Buffer 来存储数据副本
-	var dataReplica bytes.Buffer
-	if enableThumb {
-		data.Tee(&dataReplica)
+	// 视频类型对象 — 分流缓存器
+	if strings.HasPrefix(contentType, "video/") {
+		return &VidTeeBuffer{}
 	}
 
-	// 创建对象
-	objInfo, err := z.serverPools[idx].PutObject(ctx, bucket, object, data, opts)
-
-	// 生成缩略图
-	if err == nil && enableThumb {
-		z.genThumb(ctx, bucket, object, dataReplica)
-	}
-
-	return objInfo, err
+	return nil
 }
 
-func (z *erasureServerPools) genThumb(ctx context.Context, bucket, object string, data bytes.Buffer) {
+// TeeBuffer 分流缓存器
+type TeeBuffer interface {
+	io.Reader
+	io.Writer
+}
+
+// ImgTeeBuffer 图片分流缓存器
+type ImgTeeBuffer struct {
+	buf bytes.Buffer
+}
+
+func (w *ImgTeeBuffer) Read(p []byte) (int, error) {
+	return w.buf.Read(p)
+}
+
+func (w *ImgTeeBuffer) Write(p []byte) (int, error) {
+	return w.buf.Write(p)
+}
+
+// VidTeeBuffer 视频分流缓存器
+type VidTeeBuffer struct {
+	buf bytes.Buffer
+}
+
+func (w *VidTeeBuffer) Read(p []byte) (int, error) {
+	return w.buf.Read(p)
+}
+
+func (w *VidTeeBuffer) Write(p []byte) (int, error) {
+	return w.buf.Write(p)
+}
+
+var suffixes = map[string]struct{}{
+	// 图片
+	"jpg": {}, "jpeg": {}, "jfif": {}, "png": {}, "gif": {},
+	"webp": {}, "bmp": {}, "tif": {}, "tiff": {}, "svg": {},
+	"avif": {}, "arw": {}, "cr2": {}, "cr3": {}, "nef": {},
+	"orf": {}, "rw2": {}, "pef": {}, "dng": {}, "raf": {},
+	// 视频
+	"mp4": {}, "m4v": {}, "m4a": {}, "avi": {}, "mov": {},
+	"qt": {}, "wmv": {}, "asf": {}, "flv": {}, "swf": {},
+	"mkv": {}, "rm": {}, "rmvb": {}, "3gp": {}, "3g2": {},
+	"webm": {}, "mpeg": {}, "mpg": {}, "ts": {},
+}
+
+// genThumb 生成缩略图
+func (z *erasureServerPools) genThumb(ctx context.Context, bucket, object string, data io.Reader) {
 	// Get current object layer instance.
 	objAPI := newObjectLayerFn()
 	if objAPI == nil {
@@ -1185,12 +1251,22 @@ func (z *erasureServerPools) genThumb(ctx context.Context, bucket, object string
 	// 生成缩略图
 	start := time.Now()
 	var buf bytes.Buffer
-	err := thumb.ImgGen(&data, &buf, 200, 200, thumb.Fit)
+	err := thumb.GenImg(data, &buf, 200, 200, thumb.Fit)
 	if err != nil {
 		logger.LogIf(ctx, "ext/thumb", fmt.Errorf("gen failed: %v", err))
 		return
 	}
 	elapsed := time.Since(start)
+
+	// 去除原对象的扩展名，统一转换为 .webp 格式
+	var index = strings.LastIndex(object, ".")
+	if index != -1 && index > strings.LastIndex(object, "/") {
+		var suffix = strings.ToLower(object[index+1:])
+		if _, ok := suffixes[suffix]; ok {
+			object = object[:index]
+		}
+	}
+	object += ".webp"
 
 	// 创建缩略图对象
 	z.putThumbObject(ctx, objAPI, bucket, object, buf, elapsed)

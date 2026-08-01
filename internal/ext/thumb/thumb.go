@@ -68,13 +68,13 @@ func Shutdown() {
 	vips.Shutdown()
 }
 
-// ImgGen 生成图片缩略图（WebP 格式）
+// GenImg 生成图片缩略图（WebP 格式）
 // r      图片数据流
 // w      缩略图数据流
 // width  宽度
 // height 高度
 // mode   模式
-func ImgGen(r io.Reader, w io.Writer, width, height int, mode Mode) error {
+func GenImg(r io.Reader, w io.Writer, width, height int, mode Mode) error {
 	// 读取原始图片
 	data, err := io.ReadAll(r)
 	if err != nil {
@@ -124,13 +124,13 @@ func ImgGen(r io.Reader, w io.Writer, width, height int, mode Mode) error {
 	return nil
 }
 
-// VidGen 生成视频缩略图（WebP 格式）
+// GenVid 生成视频缩略图（WebP 格式）
 // r      视频数据流
 // w      缩略图数据流
 // width  宽度
 // height 高度
 // mode   模式
-func VidGen(r io.Reader, w io.Writer, width, height int, mode Mode) error {
+func GenVid(r io.Reader, w io.Writer, width, height int, mode Mode) error {
 	// 快速跳转到指定时间点截取
 	var seekSecond = 1
 
@@ -140,7 +140,7 @@ func VidGen(r io.Reader, w io.Writer, width, height int, mode Mode) error {
 	// 链式调用 ffmpeg 命令从视频数据中截取指定时间点的画面
 	err := ffmpeg.Input("pipe:", // 输入源为标准输入（stdin）
 		ffmpeg.KwArgs{}).
-		WithInput(r). // 将缓冲区作为输入数据写入 ffmpeg 的标准输入（stdin）
+		WithInput(r).   // 将缓冲区作为输入数据写入 ffmpeg 的标准输入（stdin）
 		Output("pipe:", // 输出到标准输出（stdout）
 			ffmpeg.KwArgs{
 				"vframes":           1,          // 只输出 1 帧
@@ -162,7 +162,7 @@ func VidGen(r io.Reader, w io.Writer, width, height int, mode Mode) error {
 	}
 
 	// 生成图片缩略图
-	return ImgGen(&buf, w, width, height, mode)
+	return GenImg(&buf, w, width, height, mode)
 }
 
 func c() {
