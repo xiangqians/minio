@@ -32,6 +32,25 @@ func (mode Mode) String() string {
 	}
 }
 
+type Byte int64
+
+func (b Byte) String() string {
+	switch {
+	case b >= 1<<50:
+		return fmt.Sprintf("%.2f PB", float64(b)/(1<<50))
+	case b >= 1<<40:
+		return fmt.Sprintf("%.2f TB", float64(b)/(1<<40))
+	case b >= 1<<30:
+		return fmt.Sprintf("%.2f GB", float64(b)/(1<<30))
+	case b >= 1<<20:
+		return fmt.Sprintf("%.2f MB", float64(b)/(1<<20))
+	case b >= 1<<10:
+		return fmt.Sprintf("%.2f KB", float64(b)/(1<<10))
+	default:
+		return fmt.Sprintf("%d B", b)
+	}
+}
+
 // Startup 初始化缩略图模块
 func Startup() error {
 	// 启动 libvips（在整个程序生命周期中只需执行一次）
@@ -48,13 +67,13 @@ func Shutdown() {
 	vips.Shutdown()
 }
 
-// Gen 生成图片缩略图
+// ImgGen 生成图片缩略图（WebP 格式）
 // r      图片数据流
 // w      缩略图数据流
 // width  宽度
 // height 高度
 // mode   模式
-func Gen(r io.Reader, w io.Writer, width, height int, mode Mode) error {
+func ImgGen(r io.Reader, w io.Writer, width, height int, mode Mode) error {
 	// 读取原始图片
 	data, err := io.ReadAll(r)
 	if err != nil {
@@ -81,13 +100,20 @@ func Gen(r io.Reader, w io.Writer, width, height int, mode Mode) error {
 	}
 	defer thumb.Close()
 
-	// 导出为 JPEG 格式
-	data, _, err = thumb.ExportJpeg(&vips.JpegExportParams{
-		Quality:   85,   // JPEG 图片质量（1-100）
-		Interlace: true, // 是否隔行扫描
+	// 导出为 WebP 格式
+	data, _, err = thumb.ExportWebp(&vips.WebpExportParams{
+		StripMetadata:   true,  // 删除元数据（Exif等）
+		Quality:         80,    // 75-85 最佳平衡
+		Lossless:        false, // 必须显式设置为 false（有损压缩）
+		NearLossless:    false, // 近无损模式，通常不需要
+		ReductionEffort: 6,     // 最大压缩努力（0-6），6 最慢但文件最小
+		IccProfile:      "",    // 删除 ICC 配置文件
+		MinSize:         true,  // 优先减小文件大小
+		MinKeyFrames:    0,     // 最小关键帧间隔
+		MaxKeyFrames:    0,     // 最大关键帧间隔
 	})
 	if err != nil {
-		return fmt.Errorf("export jpeg failed: %v", err)
+		return fmt.Errorf("export webp failed: %v", err)
 	}
 
 	// 写入数据
@@ -98,28 +124,28 @@ func Gen(r io.Reader, w io.Writer, width, height int, mode Mode) error {
 	return nil
 }
 
-// VidGen 生成视频缩略图
-// r          视频数据流
-// w          缩略图数据流
-// seekSecond 要截取视频的时间点（单位：秒）
-// width      宽度
-// height     高度
-// mode       模式
-func VidGen(r io.Reader, w io.Writer, seekSecond, width, height int, mode Mode) error {
+// VidGen 生成视频缩略图（WebP 格式）
+// r      视频数据流
+// w      缩略图数据流
+// width  宽度
+// height 高度
+// mode   模式
+func VidGen(r io.Reader, w io.Writer, width, height int, mode Mode) error {
 	// 链式调用 ffmpeg 命令从视频数据中截取指定时间点的画面
 	return ffmpeg.Input("pipe:", // 输入源为标准输入（stdin）
 		ffmpeg.KwArgs{}).
-		WithInput(r). // 将缓冲区作为输入数据写入 ffmpeg 的标准输入（stdin）
+		WithInput(r).   // 将缓冲区作为输入数据写入 ffmpeg 的标准输入（stdin）
 		Output("pipe:", // 输出到标准输出（stdout）
 			ffmpeg.KwArgs{
-				"vframes": 1,          // 只输出 1 帧
-				"format":  "image2",   // 输出格式为图片
-				"vcodec":  "mjpeg",    // 编码为 JPEG
-				"ss":      seekSecond, // 截取指定时间点
+				"vframes": 1,        // 只输出 1 帧
+				"format":  "image2", // 输出格式为图片
+				"vcodec":  "webp",   // 编码为 WebP，文件标准后缀为 .webp
+				"ss":      1,        // 截取指定时间点
 			},
 		).
 		WithOutput(w).
 		Run()
+
 }
 
 func c() {

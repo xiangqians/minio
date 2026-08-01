@@ -1185,7 +1185,7 @@ func (z *erasureServerPools) genThumb(ctx context.Context, bucket, object string
 	// 生成缩略图
 	start := time.Now()
 	var buf bytes.Buffer
-	err := thumb.Gen(&data, &buf, 200, 200, thumb.Fill)
+	err := thumb.ImgGen(&data, &buf, 200, 200, thumb.Fill)
 	if err != nil {
 		logger.LogIf(ctx, "ext/thumb", fmt.Errorf("gen failed: %v", err))
 		return
