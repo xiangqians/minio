@@ -38,17 +38,17 @@ type Byte int64
 func (b Byte) String() string {
 	switch {
 	case b >= 1<<50:
-		return fmt.Sprintf("%.2f PB", float64(b)/(1<<50))
+		return fmt.Sprintf("%.2fPB", float64(b)/(1<<50))
 	case b >= 1<<40:
-		return fmt.Sprintf("%.2f TB", float64(b)/(1<<40))
+		return fmt.Sprintf("%.2fTB", float64(b)/(1<<40))
 	case b >= 1<<30:
-		return fmt.Sprintf("%.2f GB", float64(b)/(1<<30))
+		return fmt.Sprintf("%.2fGB", float64(b)/(1<<30))
 	case b >= 1<<20:
-		return fmt.Sprintf("%.2f MB", float64(b)/(1<<20))
+		return fmt.Sprintf("%.2fMB", float64(b)/(1<<20))
 	case b >= 1<<10:
-		return fmt.Sprintf("%.2f KB", float64(b)/(1<<10))
+		return fmt.Sprintf("%.2fKB", float64(b)/(1<<10))
 	default:
-		return fmt.Sprintf("%d B", b)
+		return fmt.Sprintf("%dB", b)
 	}
 }
 

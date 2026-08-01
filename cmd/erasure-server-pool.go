@@ -1402,7 +1402,8 @@ func (z *erasureServerPools) genThumb(ctx context.Context, bucket, object string
 	metadata["x-amz-meta-elapsed"] = elapsed.String()
 
 	// 创建缩略图对象
-	z.putThumbObject(ctx, objAPI, bucket, object, buf.Bytes(), metadata)
+	bucket = fmt.Sprintf("%s-thumb", bucket)
+	err = z.putThumbObject(ctx, objAPI, bucket, object, buf.Bytes(), metadata)
 	if err != nil {
 		// 存储桶不存在
 		var bnf BucketNotFound
@@ -1437,8 +1438,6 @@ func (z *erasureServerPools) putThumbObject(ctx context.Context, objAPI ObjectLa
 		return err
 	}
 	var putObjReader = NewPutObjReader(rawReader)
-
-	bucket = fmt.Sprintf("%s-thumb", bucket)
 	_, err = objAPI.PutObject(ctx, bucket, object, putObjReader, ObjectOptions{
 		UserDefined: metadata,
 	})
