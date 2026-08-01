@@ -1145,7 +1145,7 @@ func (z *erasureServerPools) putObjectWithThumb(idx int, ctx context.Context, bu
 	objInfo, err := z.putObject(idx, ctx, bucket, object, data, opts)
 
 	// 生成缩略图
-	if err == nil && teeBuffer != nil {
+	if err == nil && teeBuffer != nil && teeBuffer.Size() > 0 {
 		z.genThumb(ctx, bucket, object, teeBuffer)
 	}
 
@@ -1166,13 +1166,6 @@ func (z *erasureServerPools) getTeeBuffer(bucket, object string, data *PutObjRea
 		return nil
 	}
 
-	// 对象最大限制
-	var maxSize int64 = 100 * 1024 * 1024 // 100 MB
-	// 超过最大限制的对象
-	if data.Size() > maxSize {
-		return nil
-	}
-
 	// 获取对象内容类型
 	// 优先使用用户通过元数据指定的 Content-Type
 	// 若未指定，则根据文件扩展名自动推断
@@ -1183,12 +1176,29 @@ func (z *erasureServerPools) getTeeBuffer(bucket, object string, data *PutObjRea
 
 	// 图片类型对象 — 分流缓存器
 	if strings.HasPrefix(contentType, "image/") {
-		return &ImgTeeBuffer{}
+		// 对象最大限制
+		var maxSize int64 = 10 * 1024 * 1024 // 10 MB
+
+		// 超过最大限制的对象
+		if data.Size() > maxSize {
+			return nil
+		}
+
+		return NewImgTeeBuffer(maxSize)
 	}
 
 	// 视频类型对象 — 分流缓存器
 	if strings.HasPrefix(contentType, "video/") {
-		return &VidTeeBuffer{}
+		// 对象最大限制
+		var maxSize int64 = 100 * 1024 * 1024 // 100 MB
+
+		// 超过最大限制的对象
+		if data.Size() > maxSize {
+			return nil
+		}
+
+		return NewVidTeeBuffer(maxSize,
+			1*1024*1024) // 1MB
 	}
 
 	return nil
@@ -1196,34 +1206,108 @@ func (z *erasureServerPools) getTeeBuffer(bucket, object string, data *PutObjRea
 
 // TeeBuffer 分流缓存器
 type TeeBuffer interface {
-	io.Reader
 	io.Writer
+	io.Reader
+	Size() int64
+}
+
+func NewImgTeeBuffer(maxSize int64) *ImgTeeBuffer {
+	return &ImgTeeBuffer{
+		maxSize: maxSize,
+		buf:     &bytes.Buffer{},
+	}
 }
 
 // ImgTeeBuffer 图片分流缓存器
 type ImgTeeBuffer struct {
-	buf bytes.Buffer
-}
-
-func (w *ImgTeeBuffer) Read(p []byte) (int, error) {
-	return w.buf.Read(p)
+	maxSize int64
+	buf     *bytes.Buffer
 }
 
 func (w *ImgTeeBuffer) Write(p []byte) (int, error) {
+	if int64(w.buf.Len()) > w.maxSize {
+		return len(p), nil
+	}
 	return w.buf.Write(p)
+}
+
+func (w *ImgTeeBuffer) Read(p []byte) (int, error) {
+	if int64(w.buf.Len()) > w.maxSize {
+		return 0, io.EOF
+	}
+	return w.buf.Read(p)
+}
+
+func (w *ImgTeeBuffer) Size() int64 {
+	if int64(w.buf.Len()) > w.maxSize {
+		return 0
+	}
+	return int64(w.buf.Len())
+}
+
+func NewVidTeeBuffer(maxSize int64, maxDeltaN int) *VidTeeBuffer {
+	return &VidTeeBuffer{
+		maxSize:   maxSize,
+		deltaN:    0,
+		maxDeltaN: maxDeltaN,
+		vidBuf:    &bytes.Buffer{},
+		imgBuf:    &bytes.Buffer{},
+	}
 }
 
 // VidTeeBuffer 视频分流缓存器
 type VidTeeBuffer struct {
-	buf bytes.Buffer
-}
-
-func (w *VidTeeBuffer) Read(p []byte) (int, error) {
-	return w.buf.Read(p)
+	maxSize   int64
+	deltaN    int
+	maxDeltaN int
+	vidBuf    *bytes.Buffer
+	imgBuf    *bytes.Buffer
 }
 
 func (w *VidTeeBuffer) Write(p []byte) (int, error) {
-	return w.buf.Write(p)
+	if w.imgBuf.Len() > 0 {
+		return len(p), nil
+	}
+
+	if int64(w.vidBuf.Len()) > w.maxSize {
+		return len(p), nil
+	}
+
+	n, err := w.vidBuf.Write(p)
+	if err == nil {
+		w.deltaN += n
+		if w.deltaN >= w.maxDeltaN {
+			w.deltaN = 0
+
+			w.imgBuf.Reset()
+			err := thumb.CapVid(bytes.NewReader(w.vidBuf.Bytes()), w.imgBuf)
+			if err != nil {
+				w.imgBuf.Reset()
+			}
+		}
+	}
+	return n, err
+}
+
+func (w *VidTeeBuffer) Read(p []byte) (int, error) {
+	return w.imgBuf.Read(p)
+}
+
+func (w *VidTeeBuffer) Size() int64 {
+	if int64(w.imgBuf.Len()) > w.maxSize {
+		return 0
+	}
+
+	if w.deltaN != 0 {
+		w.deltaN = 0
+		w.imgBuf.Reset()
+		err := thumb.CapVid(bytes.NewReader(w.vidBuf.Bytes()), w.imgBuf)
+		if err != nil {
+			w.imgBuf.Reset()
+		}
+	}
+
+	return int64(w.imgBuf.Len())
 }
 
 var suffixes = map[string]struct{}{
@@ -1269,7 +1353,7 @@ func (z *erasureServerPools) genThumb(ctx context.Context, bucket, object string
 	object += ".webp"
 
 	// 创建缩略图对象
-	z.putThumbObject(ctx, objAPI, bucket, object, buf, elapsed)
+	z.putThumbObject(ctx, objAPI, bucket, object, buf.Bytes(), elapsed)
 	if err != nil {
 		// 存储桶不存在
 		var bnf BucketNotFound
@@ -1285,7 +1369,7 @@ func (z *erasureServerPools) genThumb(ctx context.Context, bucket, object string
 			}
 
 			// 创建对象
-			err = z.putThumbObject(ctx, objAPI, bucket, object, buf, elapsed)
+			err = z.putThumbObject(ctx, objAPI, bucket, object, buf.Bytes(), elapsed)
 			if err == nil {
 				return
 			}
@@ -1296,10 +1380,9 @@ func (z *erasureServerPools) genThumb(ctx context.Context, bucket, object string
 	}
 }
 
-func (z *erasureServerPools) putThumbObject(ctx context.Context, objAPI ObjectLayer, bucket string, object string, data bytes.Buffer, elapsed time.Duration) error {
-	var b = data.Bytes()
-	var size = int64(len(b))
-	rawReader, err := hash.NewReader(ctx, bytes.NewReader(b), size, getMD5Hash(b), getSHA256Hash(b), size)
+func (z *erasureServerPools) putThumbObject(ctx context.Context, objAPI ObjectLayer, bucket string, object string, data []byte, elapsed time.Duration) error {
+	var size = int64(len(data))
+	rawReader, err := hash.NewReader(ctx, bytes.NewReader(data), size, getMD5Hash(data), getSHA256Hash(data), size)
 	if err != nil {
 		logger.LogIf(ctx, "ext/thumb", fmt.Errorf("new reader failed: %v", err))
 		return err

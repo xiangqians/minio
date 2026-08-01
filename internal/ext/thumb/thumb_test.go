@@ -70,22 +70,27 @@ func TestGenVid(t *testing.T) {
 	defer vidFile.Close()
 
 	// 创建字节缓冲区，用于存储将要传递给 ffmpeg 的视频数据
-	var b = make([]byte, 1024*1024)
+	var b = make([]byte, 1*1024*1024)
 	var r = bytes.NewBuffer(nil)
 
+	// 创建字节缓冲区，用于接收缩略图数据流
+	var w = bytes.NewBuffer(nil)
+
+	var i int
 	for {
 		n, err := vidFile.Read(b)
 		if n > 0 {
 			r.Write(b[:n])
 
-			// 创建字节缓冲区，用于接收缩略图数据流
-			var w = bytes.NewBuffer(nil)
-
 			// 生成视频缩略图
+			i += 1
+			log.Printf("read #%d: %s", i, Byte(int64(r.Len())))
+			w.Reset()
 			err = GenVid(bytes.NewReader(r.Bytes()), w, 200, 200, Fit)
 			if err != nil {
 				continue
 			}
+			log.Printf("total read: %s", Byte(int64(r.Len())))
 
 			// 直接将字节数据写入文件
 			var index = strings.LastIndex(vidName, ".")
@@ -94,7 +99,7 @@ func TestGenVid(t *testing.T) {
 			if err != nil {
 				log.Fatalf("write file failed: %v", err)
 			}
-			log.Printf("read %s\n", Byte(int64(w.Len())))
+			log.Printf("Thumbnail created: %s\n", imgName)
 			break
 		}
 		if err != nil {

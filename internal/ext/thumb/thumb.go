@@ -131,11 +131,26 @@ func GenImg(r io.Reader, w io.Writer, width, height int, mode Mode) error {
 // height 高度
 // mode   模式
 func GenVid(r io.Reader, w io.Writer, width, height int, mode Mode) error {
-	// 快速跳转到指定时间点截取
-	var seekSecond = 1
-
 	// 创建字节缓冲区，用于接收 ffmpeg 输出的图片数据
 	var buf bytes.Buffer
+
+	// 从视频数据中截取指定时间点的画面
+	err := CapVid(r, &buf)
+	if err != nil {
+		return err
+	}
+	if buf.Len() == 0 {
+		return fmt.Errorf("video frame capture failed: output is empty")
+	}
+
+	// 生成图片缩略图
+	return GenImg(&buf, w, width, height, mode)
+}
+
+// CapVid 从视频数据中截取指定时间点的画面（WebP 格式）
+func CapVid(r io.Reader, w io.Writer) error {
+	// 快速跳转到指定时间点截取
+	var seekSecond = 1
 
 	// 链式调用 ffmpeg 命令从视频数据中截取指定时间点的画面
 	err := ffmpeg.Input("pipe:", // 输入源为标准输入（stdin）
@@ -152,17 +167,12 @@ func GenVid(r io.Reader, w io.Writer, width, height int, mode Mode) error {
 				"lossless":          0,          // 0=有损，1=无损
 			},
 		).
-		WithOutput(&buf).
+		WithOutput(w).
 		Run()
 	if err != nil {
 		return fmt.Errorf("video frame capture failed: %w", err)
 	}
-	if buf.Len() == 0 {
-		return fmt.Errorf("video frame capture failed: output is empty")
-	}
-
-	// 生成图片缩略图
-	return GenImg(&buf, w, width, height, mode)
+	return nil
 }
 
 func c() {
