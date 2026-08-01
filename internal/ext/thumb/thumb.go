@@ -6,6 +6,7 @@ package thumb
 import "C"
 
 import (
+	"bytes"
 	"fmt"
 	"github.com/davidbyttow/govips/v2/vips"
 	ffmpeg "github.com/u2takey/ffmpeg-go"
@@ -85,12 +86,11 @@ func ImgGen(r io.Reader, w io.Writer, width, height int, mode Mode) error {
 	var size vips.Size
 	switch mode {
 	case Fit:
-		crop = vips.InterestingNone
-		size = vips.SizeDown
+		crop = vips.InterestingNone // 不裁剪
+		size = vips.SizeDown        // 等比例缩小，不超过指定尺寸
 	case Fill:
-		// 裁剪策略 (InterestingCentre 表示居中裁剪)
-		crop = vips.InterestingCentre
-		size = vips.SizeBoth
+		crop = vips.InterestingCentre // 居中裁剪
+		size = vips.SizeBoth          // 等比例缩放，取宽高中较大的比例，确保完全覆盖指定尺寸
 	default:
 		return fmt.Errorf("unsupported mode: %s", mode)
 	}
@@ -131,21 +131,38 @@ func ImgGen(r io.Reader, w io.Writer, width, height int, mode Mode) error {
 // height 高度
 // mode   模式
 func VidGen(r io.Reader, w io.Writer, width, height int, mode Mode) error {
+	// 快速跳转到指定时间点截取
+	var seekSecond = 1
+
+	// 创建字节缓冲区，用于接收 ffmpeg 输出的图片数据
+	var buf bytes.Buffer
+
 	// 链式调用 ffmpeg 命令从视频数据中截取指定时间点的画面
-	return ffmpeg.Input("pipe:", // 输入源为标准输入（stdin）
+	err := ffmpeg.Input("pipe:", // 输入源为标准输入（stdin）
 		ffmpeg.KwArgs{}).
-		WithInput(r).   // 将缓冲区作为输入数据写入 ffmpeg 的标准输入（stdin）
+		WithInput(r). // 将缓冲区作为输入数据写入 ffmpeg 的标准输入（stdin）
 		Output("pipe:", // 输出到标准输出（stdout）
 			ffmpeg.KwArgs{
-				"vframes": 1,        // 只输出 1 帧
-				"format":  "image2", // 输出格式为图片
-				"vcodec":  "webp",   // 编码为 WebP，文件标准后缀为 .webp
-				"ss":      1,        // 截取指定时间点
+				"vframes":           1,          // 只输出 1 帧
+				"format":            "image2",   // 输出格式为图片
+				"vcodec":            "webp",     // 编码为 WebP，文件标准后缀为 .webp
+				"ss":                seekSecond, // 快速跳转到指定时间点截取
+				"compression_level": 6,          // 0-6，6 压缩率最高
+				"quality":           80,         // 0-100，推荐 75-85
+				"lossless":          0,          // 0=有损，1=无损
 			},
 		).
-		WithOutput(w).
+		WithOutput(&buf).
 		Run()
+	if err != nil {
+		return fmt.Errorf("video frame capture failed: %w", err)
+	}
+	if buf.Len() == 0 {
+		return fmt.Errorf("video frame capture failed: output is empty")
+	}
 
+	// 生成图片缩略图
+	return ImgGen(&buf, w, width, height, mode)
 }
 
 func c() {

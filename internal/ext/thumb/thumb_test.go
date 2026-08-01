@@ -49,7 +49,7 @@ func TestImgGen(t *testing.T) {
 	defer w.Close()
 
 	// 生成缩略图
-	err = ImgGen(r, w, 200, 200, Fill)
+	err = ImgGen(r, w, 200, 200, Fit)
 	if err != nil {
 		log.Fatalf("thumb gen failed: %v", err)
 	}
@@ -62,38 +62,37 @@ func TestVidGen(t *testing.T) {
 	var vidName = "D:\\tmp\\minio\\tmp\\test.mp4"
 
 	// 打开文件
-	file, err := os.Open(vidName)
+	vidFile, err := os.Open(vidName)
 	if err != nil {
 		fmt.Sprintf("open file failed: %v", err)
 		return
 	}
-	defer file.Close()
+	defer vidFile.Close()
 
 	// 创建字节缓冲区，用于存储将要传递给 ffmpeg 的视频数据
 	var b = make([]byte, 1024*1024)
 	var r = bytes.NewBuffer(nil)
 
 	for {
-		n, err := file.Read(b)
+		n, err := vidFile.Read(b)
 		if n > 0 {
 			r.Write(b[:n])
 
-			// 创建字节缓冲区，用于接收 ffmpeg 输出的图片数据
+			// 创建字节缓冲区，用于接收缩略图数据流
 			var w = bytes.NewBuffer(nil)
 
-			err = VidGen(bytes.NewReader(r.Bytes()), w, 200, 200, Fill)
+			// 生成视频缩略图
+			err = VidGen(bytes.NewReader(r.Bytes()), w, 200, 200, Fit)
 			if err != nil {
 				continue
 			}
 
 			// 直接将字节数据写入文件
-			if w.Len() > 0 {
-				var index = strings.LastIndex(vidName, ".")
-				var imgName = fmt.Sprintf("%s.webp", vidName[:index])
-				err = os.WriteFile(imgName, w.Bytes(), 0644)
-				if err != nil {
-					log.Fatalf("write file failed: %v", err)
-				}
+			var index = strings.LastIndex(vidName, ".")
+			var imgName = fmt.Sprintf("%s.webp", vidName[:index])
+			err = os.WriteFile(imgName, w.Bytes(), 0644)
+			if err != nil {
+				log.Fatalf("write file failed: %v", err)
 			}
 			log.Printf("read %s\n", Byte(int64(w.Len())))
 			break
