@@ -1341,16 +1341,11 @@ func (tb *VidTeeBuffer) Elapsed() time.Duration {
 }
 
 func (tb *VidTeeBuffer) capVid() {
-	var b = thumb.Byte(int64(tb.vidBuf.Len()))
-	logger.Info("[ext/thumb] %s/%s read: %s", tb.bucket, tb.object, b)
-
 	var start = time.Now()
 	tb.imgBuf.Reset()
 	err := thumb.CapVid(bytes.NewReader(tb.vidBuf.Bytes()), tb.imgBuf)
 	if err != nil {
 		tb.imgBuf.Reset()
-	} else {
-		logger.Info("[ext/thumb] %s/%s total read: %s", tb.bucket, tb.object, b)
 	}
 	tb.elapsed += time.Since(start)
 }
