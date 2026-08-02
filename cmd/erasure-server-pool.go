@@ -1193,7 +1193,7 @@ func (z *erasureServerPools) getTeeBuffer(bucket, object string, data *PutObjRea
 		var maxSize int64 = 100 * 1024 * 1024 // 100 MB
 		// 最大增量字节数据
 		var maxDeltaN = 1 * 1024 * 1024 // 1MB
-		return NewVidTeeBuffer(maxSize, maxDeltaN)
+		return NewVidTeeBuffer(bucket, object, maxSize, maxDeltaN)
 	}
 
 	return nil
@@ -1262,8 +1262,10 @@ func (tb *ImgTeeBuffer) Elapsed() time.Duration {
 	return tb.elapsed
 }
 
-func NewVidTeeBuffer(maxSize int64, maxDeltaN int) *VidTeeBuffer {
+func NewVidTeeBuffer(bucket, object string, maxSize int64, maxDeltaN int) *VidTeeBuffer {
 	return &VidTeeBuffer{
+		bucket:    bucket,
+		object:    object,
 		maxSize:   maxSize,
 		deltaN:    0,
 		maxDeltaN: maxDeltaN,
@@ -1276,6 +1278,8 @@ func NewVidTeeBuffer(maxSize int64, maxDeltaN int) *VidTeeBuffer {
 
 // VidTeeBuffer 视频分流缓存器
 type VidTeeBuffer struct {
+	bucket    string
+	object    string
 	maxSize   int64
 	deltaN    int
 	maxDeltaN int
@@ -1337,11 +1341,16 @@ func (tb *VidTeeBuffer) Elapsed() time.Duration {
 }
 
 func (tb *VidTeeBuffer) capVid() {
+	var b = thumb.Byte(int64(tb.vidBuf.Len()))
+	logger.Info("[ext/thumb] %s/%s read: %s", tb.bucket, tb.object, b)
+
 	var start = time.Now()
 	tb.imgBuf.Reset()
 	err := thumb.CapVid(bytes.NewReader(tb.vidBuf.Bytes()), tb.imgBuf)
 	if err != nil {
 		tb.imgBuf.Reset()
+	} else {
+		logger.Info("[ext/thumb] %s/%s total read: %s", tb.bucket, tb.object, b)
 	}
 	tb.elapsed += time.Since(start)
 }
