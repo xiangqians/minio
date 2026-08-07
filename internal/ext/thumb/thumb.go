@@ -133,6 +133,7 @@ func Capture(r io.Reader, w io.Writer) error {
 	var seekSecond = 1
 
 	// 链式调用 ffmpeg 命令从视频数据中截取指定时间点的画面
+	// $ ffmpeg -i input.mp4 -ss 1 -vframes 1 -vcodec webp -compression_level 6 -lossless 0 -quality 80 -f image2 output.webp
 	err := ffmpeg.Input("pipe:", // 输入源为标准输入（stdin）
 		ffmpeg.KwArgs{}).
 		WithInput(r). // 将缓冲区作为输入数据写入 ffmpeg 的标准输入（stdin）

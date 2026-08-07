@@ -102,30 +102,44 @@ func (b *ImgBuffer) Duration() time.Duration {
 	return b.duration
 }
 
-func NewVidBuffer(bucket, object string, maxSize int64) *VidBuffer {
+// MP4
+// 1、元数据（moov）在数据（mdat）之前，边下边播（Fast Start）
+// [ftyp][moov][mdat...]
+// 2、数据（mdat）在元数据（moov）之前，需要下载完所有数据才能开始播放
+// [ftyp][mdat...][moov]
+
+// 检测 moov 位置
+// $ ffprobe -v trace -i input.mp4 2>&1 | grep -e "type:'moov'" -e "type:'mdat'"
+
+// 修复为 Fast Start
+// $ ffmpeg -i input.mp4 -c copy -movflags +faststart input-faststart.mp4
+
+func NewVidBuffer(bucket, object string) *VidBuffer {
 	return &VidBuffer{
-		bucket:   bucket,
-		object:   object,
-		vidBuf:   &bytes.Buffer{},
-		imgBuf:   &bytes.Buffer{},
-		offset:   0,
-		maxSize:  maxSize,
-		written:  0,
-		readable: 0,
-		duration: time.Duration(0),
+		bucket:     bucket,
+		object:     object,
+		vidBuf:     &bytes.Buffer{},
+		imgBuf:     &bytes.Buffer{},
+		offset:     0,
+		maxPending: 1 * 1024 * 1024,  // 1MB
+		maxSize:    10 * 1024 * 1024, // 10MB
+		written:    0,
+		readable:   0,
+		duration:   time.Duration(0),
 	}
 }
 
 type VidBuffer struct {
-	bucket   string        // 存储桶名称
-	object   string        // 对象键名
-	vidBuf   *bytes.Buffer // 视频数据缓冲区
-	imgBuf   *bytes.Buffer // 图像数据缓冲区
-	offset   int64         // 视频数据偏移量
-	maxSize  int64         // 视频数据最大容量
-	written  int64         // 已写入字节数
-	readable int64         // 可读取字节数
-	duration time.Duration // 耗时
+	bucket     string        // 存储桶名称
+	object     string        // 对象键名
+	vidBuf     *bytes.Buffer // 视频数据缓冲区
+	imgBuf     *bytes.Buffer // 图像数据缓冲区
+	offset     int64         // 视频数据偏移量
+	maxPending int64         // 视频数据最大待处理数量
+	maxSize    int64         // 视频数据最大容量
+	written    int64         // 已写入字节数
+	readable   int64         // 可读取字节数
+	duration   time.Duration // 耗时
 }
 
 func (b *VidBuffer) Write(p []byte) (int, error) {
@@ -146,10 +160,11 @@ func (b *VidBuffer) Write(p []byte) (int, error) {
 			b.readable = int64(b.imgBuf.Len())
 			logger.Info("[ext/thumb] VID-%s bucket=%s, object=%s", Byte(b.written), b.bucket, b.object)
 		}
-	} else if b.written-b.offset >= 1*1024*1024 { // 1MB
+	} else if b.written-b.offset >= b.maxPending {
 		err := b.capture()
 		if err != nil {
 			b.offset = b.written
+			b.maxPending += 2 * 1024 * 1024
 			logger.Warning("[ext/thumb] VID-%s - bucket=%s, object=%s, %v", Byte(b.written), b.bucket, b.object, err)
 		} else {
 			b.offset = OffsetSuccess
@@ -195,7 +210,7 @@ func (b *VidBuffer) IsSuccess() bool {
 		logger.Info("[ext/thumb] VID-%s bucket=%s, object=%s", Byte(b.written), b.bucket, b.object)
 	}
 	b.duration += time.Since(start)
-	
+
 	return b.offset == OffsetSuccess
 }
 

@@ -59,6 +59,7 @@ func TestGenImg(t *testing.T) {
 func TestCapture(t *testing.T) {
 	// 视频文件名
 	var vidName = "D:\\tmp\\minio\\tmp\\test.mp4"
+	vidName = "D:\\tmp\\minio\\tmp\\test-faststart.mp4"
 
 	// 打开文件
 	vidFile, err := os.Open(vidName)
@@ -69,10 +70,9 @@ func TestCapture(t *testing.T) {
 	defer vidFile.Close()
 
 	// 创建字节缓冲区，用于存储将要传递给 ffmpeg 的视频数据
-	var b = make([]byte, 50*1024*1024)
+	var b = make([]byte, 1*1024*1024)
 
-	var maxSize int64 = 500 * 1024 * 1024 // 500 MB
-	var buf = NewVidBuffer("", "", maxSize)
+	var buf = NewVidBuffer("", "")
 
 	for {
 		n, err := vidFile.Read(b)
