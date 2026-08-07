@@ -3,7 +3,6 @@
 package thumb
 
 import (
-	"bytes"
 	"fmt"
 	"io"
 	"log"
@@ -56,8 +55,8 @@ func TestGenImg(t *testing.T) {
 	log.Printf("Thumbnail created: %s\n", dst)
 }
 
-// 测试生成视频缩略图（WebP 格式）
-func TestGenVid(t *testing.T) {
+// 测试从视频数据中截取指定时间点的画面（WebP 格式）
+func TestCapture(t *testing.T) {
 	// 视频文件名
 	var vidName = "D:\\tmp\\minio\\tmp\\test.mp4"
 
@@ -70,37 +69,19 @@ func TestGenVid(t *testing.T) {
 	defer vidFile.Close()
 
 	// 创建字节缓冲区，用于存储将要传递给 ffmpeg 的视频数据
-	var b = make([]byte, 1*1024*1024)
-	var r = bytes.NewBuffer(nil)
+	var b = make([]byte, 50*1024*1024)
 
-	// 创建字节缓冲区，用于接收缩略图数据流
-	var w = bytes.NewBuffer(nil)
+	var maxSize int64 = 500 * 1024 * 1024 // 500 MB
+	var buf = NewVidBuffer("", "", maxSize)
 
-	var i int
 	for {
 		n, err := vidFile.Read(b)
 		if n > 0 {
-			r.Write(b[:n])
-
-			// 生成视频缩略图
-			i += 1
-			log.Printf("read #%d: %s", i, Byte(int64(r.Len())))
-			w.Reset()
-			err = GenVid(bytes.NewReader(r.Bytes()), w, 200, 200, Fit)
-			if err != nil {
-				continue
+			buf.Write(b[:n])
+			if buf.isSuccess() {
+				saveWebp(vidName, buf)
+				return
 			}
-			log.Printf("total read: %s", Byte(int64(r.Len())))
-
-			// 直接将字节数据写入文件
-			var index = strings.LastIndex(vidName, ".")
-			var imgName = fmt.Sprintf("%s.webp", vidName[:index])
-			err = os.WriteFile(imgName, w.Bytes(), 0644)
-			if err != nil {
-				log.Fatalf("write file failed: %v", err)
-			}
-			log.Printf("Thumbnail created: %s\n", imgName)
-			break
 		}
 		if err != nil {
 			if err == io.EOF {
@@ -110,4 +91,27 @@ func TestGenVid(t *testing.T) {
 			return
 		}
 	}
+
+	if buf.IsSuccess() {
+		saveWebp(vidName, buf)
+		return
+	}
+}
+
+func saveWebp(name string, r io.Reader) {
+	var index = strings.LastIndex(name, ".")
+	name = fmt.Sprintf("%s.webp", name[:index])
+	file, err := os.Create(name)
+	if err != nil {
+		log.Printf("create WebP file failed: %v\n", err)
+		return
+	}
+	defer file.Close()
+
+	_, err = io.Copy(file, r)
+	if err != nil {
+		log.Printf("write WebP file failed: %v\n", err)
+		return
+	}
+	log.Printf("WebP saved: %s\n", name)
 }

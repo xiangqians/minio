@@ -33,25 +33,6 @@ func (mode Mode) String() string {
 	}
 }
 
-type Byte int64
-
-func (b Byte) String() string {
-	switch {
-	case b >= 1<<50:
-		return fmt.Sprintf("%.2fPB", float64(b)/(1<<50))
-	case b >= 1<<40:
-		return fmt.Sprintf("%.2fTB", float64(b)/(1<<40))
-	case b >= 1<<30:
-		return fmt.Sprintf("%.2fGB", float64(b)/(1<<30))
-	case b >= 1<<20:
-		return fmt.Sprintf("%.2fMB", float64(b)/(1<<20))
-	case b >= 1<<10:
-		return fmt.Sprintf("%.2fKB", float64(b)/(1<<10))
-	default:
-		return fmt.Sprintf("%dB", b)
-	}
-}
-
 // Startup 初始化缩略图模块
 func Startup() error {
 	// 启动 libvips（在整个程序生命周期中只需执行一次）
@@ -132,30 +113,29 @@ func GenImg(r io.Reader, w io.Writer, width, height int, mode Mode) error {
 // mode   模式
 func GenVid(r io.Reader, w io.Writer, width, height int, mode Mode) error {
 	// 创建字节缓冲区，用于接收 ffmpeg 输出的图片数据
-	var buf bytes.Buffer
+	var buf = &bytes.Buffer{}
 
 	// 从视频数据中截取指定时间点的画面
-	err := CapVid(r, &buf)
+	err := Capture(r, buf)
 	if err != nil {
 		return err
 	}
-	if buf.Len() == 0 {
-		return fmt.Errorf("video frame capture failed: output is empty")
-	}
 
 	// 生成图片缩略图
-	return GenImg(&buf, w, width, height, mode)
+	return GenImg(buf, w, width, height, mode)
 }
 
-// CapVid 从视频数据中截取指定时间点的画面（WebP 格式）
-func CapVid(r io.Reader, w io.Writer) error {
+// Capture 从视频数据中截取指定时间点的画面（WebP 格式）
+// r 视频数据流
+// w 图像数据流
+func Capture(r io.Reader, w io.Writer) error {
 	// 快速跳转到指定时间点截取
 	var seekSecond = 1
 
 	// 链式调用 ffmpeg 命令从视频数据中截取指定时间点的画面
 	err := ffmpeg.Input("pipe:", // 输入源为标准输入（stdin）
 		ffmpeg.KwArgs{}).
-		WithInput(r).   // 将缓冲区作为输入数据写入 ffmpeg 的标准输入（stdin）
+		WithInput(r). // 将缓冲区作为输入数据写入 ffmpeg 的标准输入（stdin）
 		Output("pipe:", // 输出到标准输出（stdout）
 			ffmpeg.KwArgs{
 				"vframes":           1,          // 只输出 1 帧
@@ -169,9 +149,15 @@ func CapVid(r io.Reader, w io.Writer) error {
 		).
 		WithOutput(w).
 		Run()
+
 	if err != nil {
 		return fmt.Errorf("video frame capture failed: %w", err)
 	}
+
+	if buf, ok := r.(*bytes.Buffer); ok && buf.Len() == 0 {
+		return fmt.Errorf("video frame capture failed: output is empty")
+	}
+
 	return nil
 }
 
