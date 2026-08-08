@@ -32,7 +32,7 @@ func (b Byte) String() string {
 type Buffer interface {
 	io.Writer
 	io.Reader
-	IsSuccess() bool         // 处理是否成功
+	Ok() bool                // 处理是否成功
 	Written() Byte           // 已写入字节数
 	Readable() Byte          // 可读取字节数
 	Duration() time.Duration // 耗时
@@ -86,7 +86,7 @@ func (b *ImgBuffer) Read(p []byte) (int, error) {
 	return b.buf.Read(p)
 }
 
-func (b *ImgBuffer) IsSuccess() bool {
+func (b *ImgBuffer) Ok() bool {
 	return b.offset != OffsetError
 }
 
@@ -158,18 +158,16 @@ func (b *VidBuffer) Write(p []byte) (int, error) {
 		} else {
 			b.offset = OffsetSuccess
 			b.readable = int64(b.imgBuf.Len())
-			logger.Info("[ext/thumb] VID-%s bucket=%s, object=%s", Byte(b.written), b.bucket, b.object)
 		}
 	} else if b.written-b.offset >= b.maxPending {
 		err := b.capture()
 		if err != nil {
 			b.offset = b.written
 			b.maxPending += 2 * 1024 * 1024
-			logger.Warning("[ext/thumb] VID-%s - bucket=%s, object=%s, %v", Byte(b.written), b.bucket, b.object, err)
+			logger.Warning("[ext/thumb] VID-%s bucket=%s, object=%s, %v", Byte(b.written), b.bucket, b.object, err)
 		} else {
 			b.offset = OffsetSuccess
 			b.readable = int64(b.imgBuf.Len())
-			logger.Info("[ext/thumb] VID-%s bucket=%s, object=%s", Byte(b.written), b.bucket, b.object)
 		}
 	}
 	b.duration += time.Since(start)
@@ -181,11 +179,11 @@ func (b *VidBuffer) Read(p []byte) (int, error) {
 	return b.imgBuf.Read(p)
 }
 
-func (b *VidBuffer) isSuccess() bool {
+func (b *VidBuffer) ok() bool {
 	return b.offset == OffsetSuccess
 }
 
-func (b *VidBuffer) IsSuccess() bool {
+func (b *VidBuffer) Ok() bool {
 	if b.offset == OffsetSuccess {
 		return true
 	}
@@ -207,7 +205,6 @@ func (b *VidBuffer) IsSuccess() bool {
 	} else {
 		b.offset = OffsetSuccess
 		b.readable = int64(b.imgBuf.Len())
-		logger.Info("[ext/thumb] VID-%s bucket=%s, object=%s", Byte(b.written), b.bucket, b.object)
 	}
 	b.duration += time.Since(start)
 

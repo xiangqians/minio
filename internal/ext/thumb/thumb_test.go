@@ -78,7 +78,7 @@ func TestCapture(t *testing.T) {
 		n, err := vidFile.Read(b)
 		if n > 0 {
 			buf.Write(b[:n])
-			if buf.isSuccess() {
+			if buf.ok() {
 				saveWebp(vidName, buf)
 				return
 			}
@@ -92,7 +92,7 @@ func TestCapture(t *testing.T) {
 		}
 	}
 
-	if buf.IsSuccess() {
+	if buf.Ok() {
 		saveWebp(vidName, buf)
 		return
 	}
