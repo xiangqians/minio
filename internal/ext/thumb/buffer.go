@@ -126,6 +126,7 @@ func NewVidBuffer(bucket, object string) *VidBuffer {
 		written:    0,
 		readable:   0,
 		duration:   time.Duration(0),
+		err:        nil,
 	}
 }
 
@@ -140,6 +141,7 @@ type VidBuffer struct {
 	written    int64         // 已写入字节数
 	readable   int64         // 可读取字节数
 	duration   time.Duration // 耗时
+	err        error
 }
 
 func (b *VidBuffer) Write(p []byte) (int, error) {
@@ -164,7 +166,7 @@ func (b *VidBuffer) Write(p []byte) (int, error) {
 		if err != nil {
 			b.offset = b.written
 			b.maxPending += 2 * 1024 * 1024
-			logger.Warning("[ext/thumb] VID-%s bucket=%s, object=%s, %v", Byte(b.written), b.bucket, b.object, err)
+			b.err = err
 		} else {
 			b.offset = OffsetSuccess
 			b.readable = int64(b.imgBuf.Len())
@@ -194,6 +196,7 @@ func (b *VidBuffer) Ok() bool {
 
 	if b.offset == b.written {
 		b.offset = OffsetError
+		logger.Warning("[ext/thumb] VID-%s bucket=%s, object=%s, %v", Byte(b.written), b.bucket, b.object, b.err)
 		return false
 	}
 

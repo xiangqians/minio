@@ -32,7 +32,8 @@ RUN go mod download
 # 启用 CGO
 ENV CGO_ENABLED=1
 # 构建
-RUN go build -ldflags="-s -w" -o build/minio
+#RUN go build -ldflags="-s -w" -o build/minio
+RUN go build -trimpath -o build/minio
 
 # 压缩可执行文件
 # https://upx.github.io

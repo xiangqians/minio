@@ -1164,7 +1164,7 @@ func (z *erasureServerPools) putObjectWithThumb(idx int, ctx context.Context, bu
 	var imgBuf bytes.Buffer
 	err = thumb.GenImg(buf, &imgBuf, 200, 200, thumb.Fit)
 	if err != nil {
-		logger.Warning("[ext/thumb] PUTOBJ-GenImg bucket=%s, object=%s, gen failed: %v", bucket, object, err)
+		logger.Warning("[ext/thumb] PUTOBJ-GenImg bucket=%s, object=%s, %v", bucket, object, err)
 		return objInfo, err
 	}
 	var duration = time.Since(start) + buf.Duration()
@@ -1198,7 +1198,7 @@ func (z *erasureServerPools) putObjectWithThumb(idx int, ctx context.Context, bu
 			if err != nil {
 				var be BucketExists
 				if !errors.As(err, &be) {
-					logger.Warning("[ext/thumb] PUTOBJ-MakeBucket bucket=%s, object=%s, make bucket failed: %v", bucket, object, err)
+					logger.Warning("[ext/thumb] PUTOBJ-MakeBucket bucket=%s, object=%s, %v", bucket, object, err)
 					return objInfo, err
 				}
 			}
@@ -1210,7 +1210,7 @@ func (z *erasureServerPools) putObjectWithThumb(idx int, ctx context.Context, bu
 			}
 		}
 
-		logger.Warning("[ext/thumb] PUTOBJ-putThumbObject bucket=%s, object=%s, put object failed: %v", bucket, object, err)
+		logger.Warning("[ext/thumb] PUTOBJ-putThumbObject bucket=%s, object=%s, %v", bucket, object, err)
 		return objInfo, err
 	}
 
