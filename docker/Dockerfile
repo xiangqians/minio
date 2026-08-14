@@ -23,7 +23,8 @@ WORKDIR /app
 
 # 复制源码
 # 将 minio 目录下的文件复制到 /app 目录下
-COPY minio/ ./
+#COPY minio/ ./
+COPY ./ ./
 
 # 设置代理
 RUN go env -w GOPROXY=https://goproxy.cn,direct

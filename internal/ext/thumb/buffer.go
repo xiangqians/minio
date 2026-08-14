@@ -5,7 +5,6 @@ package thumb
 import (
 	"bytes"
 	"fmt"
-	"github.com/minio/minio/internal/logger"
 	"io"
 	"time"
 )
@@ -75,7 +74,7 @@ func (b *ImgBuffer) Write(p []byte) (int, error) {
 	b.written += int64(n)
 	if b.written > b.maxSize {
 		b.offset = OffsetError
-		logger.Warning("[ext/thumb] IMG-MAX-%s bucket=%s, object=%s", Byte(b.written), b.bucket, b.object)
+		Warn("IMG-MAX-%s bucket=%s, object=%s", Byte(b.written), b.bucket, b.object)
 	}
 	b.duration += time.Since(start)
 
@@ -156,7 +155,7 @@ func (b *VidBuffer) Write(p []byte) (int, error) {
 		err := b.capture()
 		if err != nil {
 			b.offset = OffsetError
-			logger.Warning("[ext/thumb] VID-MAX-%s bucket=%s, object=%s, %v", Byte(b.written), b.bucket, b.object, err)
+			Warn("VID-MAX-%s bucket=%s, object=%s, %v", Byte(b.written), b.bucket, b.object, err)
 		} else {
 			b.offset = OffsetSuccess
 			b.readable = int64(b.imgBuf.Len())
@@ -196,7 +195,7 @@ func (b *VidBuffer) Ok() bool {
 
 	if b.offset == b.written {
 		b.offset = OffsetError
-		logger.Warning("[ext/thumb] VID-%s bucket=%s, object=%s, %v", Byte(b.written), b.bucket, b.object, b.err)
+		Warn("VID-%s bucket=%s, object=%s, %v", Byte(b.written), b.bucket, b.object, b.err)
 		return false
 	}
 
@@ -204,7 +203,7 @@ func (b *VidBuffer) Ok() bool {
 	err := b.capture()
 	if err != nil {
 		b.offset = OffsetError
-		logger.Warning("[ext/thumb] VID-LAST-%s bucket=%s, object=%s, %v", Byte(b.written), b.bucket, b.object, err)
+		Warn("VID-LAST-%s bucket=%s, object=%s, %v", Byte(b.written), b.bucket, b.object, err)
 	} else {
 		b.offset = OffsetSuccess
 		b.readable = int64(b.imgBuf.Len())

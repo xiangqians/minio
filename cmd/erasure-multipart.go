@@ -22,6 +22,7 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
+	"github.com/minio/minio/internal/ext/thumb"
 	"io"
 	"os"
 	"path"
@@ -1504,7 +1505,32 @@ func (er erasureObjects) CompleteMultipartUpload(ctx context.Context, bucket str
 	fi.IsLatest = true
 
 	// Success, return object info.
-	return fi.ToObjectInfo(bucket, object, opts.Versioned || opts.VersionSuspended), nil
+	var objInfo = fi.ToObjectInfo(bucket, object, opts.Versioned || opts.VersionSuspended)
+
+	// 生成缩略图
+	if strings.HasPrefix(objInfo.ContentType, "image/") {
+		var start = time.Now()
+		ctx := context.Background()
+		opts := ObjectOptions{
+			VersionID: objInfo.VersionID,
+			NoLock:    true,
+		}
+		reader, err := er.GetObjectNInfo(ctx, bucket, object, nil, nil, opts)
+		if err != nil {
+			thumb.Warn("CompleteMultipartUpload-GetObjectNInfo bucket=%s, object=%s, %v", bucket, object, err)
+			return objInfo, nil
+		}
+		defer reader.Close()
+		var duration = time.Since(start)
+
+		var written = thumb.Byte(objInfo.Size)
+		tag, err := genThumb(ctx, bucket, object, reader, written, written, duration)
+		if err != nil {
+			thumb.Warn("CompleteMultipartUpload-%s bucket=%s, object=%s, %v", tag, bucket, object, err)
+		}
+	}
+
+	return objInfo, nil
 }
 
 // AbortMultipartUpload - aborts an ongoing multipart operation
